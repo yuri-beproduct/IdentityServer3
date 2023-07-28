@@ -15,18 +15,16 @@
  */
 
 using Autofac;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Services;
 using Microsoft.Owin.Infrastructure;
-using Microsoft.Owin.Logging;
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens;
-using System.Threading.Tasks;
+using Thinktecture.IdentityModel.Tokens;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Services;
 
 namespace Owin
 {
@@ -41,7 +39,7 @@ namespace Owin
         /// Extension method to configure IdentityServer in the hosting application.
         /// </summary>
         /// <param name="app">The application.</param>
-        /// <param name="options">The <see cref="IdentityServer3.Core.Configuration.IdentityServerOptions"/>.</param>
+        /// <param name="options">The <see cref="Thinktecture.IdentityServer.Core.Configuration.IdentityServerOptions"/>.</param>
         /// <returns></returns>
         /// <exception cref="System.ArgumentNullException">
         /// app
@@ -56,41 +54,27 @@ namespace Owin
             options.Validate();
 
             // turn off weird claim mappings for JWTs
-            JwtSecurityTokenHandler.InboundClaimTypeMap = new Dictionary<string, string>();
-            JwtSecurityTokenHandler.OutboundClaimTypeMap = new Dictionary<string, string>();
+            JwtSecurityTokenHandler.InboundClaimTypeMap = ClaimMappings.None;
+            JwtSecurityTokenHandler.OutboundClaimTypeMap = ClaimMappings.None;
 
             if (options.RequireSsl)
             {
                 app.Use<RequireSslMiddleware>();
             }
 
-            if (options.LoggingOptions.EnableKatanaLogging)
-            {
-                app.SetLoggerFactory(new LibLogKatanaLoggerFactory());
-            }
-
-            app.UseEmbeddedFileServer();
-
             app.ConfigureRequestId();
+
+            options.ProtocolLogoutUrls.Add(Constants.RoutePaths.Oidc.EndSessionCallback);
             app.ConfigureDataProtectionProvider(options);
+
             app.ConfigureIdentityServerBaseUrl(options.PublicOrigin);
             app.ConfigureIdentityServerIssuer(options);
-
-            app.ConfigureRequestBodyBuffer();
-
-            // this needs to be earlier than the autofac middleware so anything is disposed and re-initialized
-            // if we send the request back into the pipeline to render the logged out page
-            app.ConfigureRenderLoggedOutPage();
 
             var container = AutofacConfig.Configure(options);
             app.UseAutofacMiddleware(container);
 
             app.UseCors();
             app.ConfigureCookieAuthentication(options.AuthenticationOptions.CookieOptions, options.DataProtector);
-
-            // this needs to be before external middleware
-            app.ConfigureSignOutMessageCookie();
-
 
             if (options.PluginConfiguration != null)
             {
@@ -102,7 +86,7 @@ namespace Owin
                 options.AuthenticationOptions.IdentityProviders(app, Constants.ExternalAuthenticationType);
             }
 
-            app.ConfigureHttpLogging(options.LoggingOptions);
+            app.UseEmbeddedFileServer();
 
             SignatureConversions.AddConversions(app);
             
@@ -113,35 +97,34 @@ namespace Owin
             using (var child = container.CreateScopeWithEmptyOwinContext())
             {
                 var eventSvc = child.Resolve<IEventService>();
-                // TODO -- perhaps use AsyncHelper instead?
-                DoStartupDiagnosticsAsync(options, eventSvc).Wait();
+                DoStartupDiagnostics(options, eventSvc);
             }
             
             return app;
         }
 
-        private static async Task DoStartupDiagnosticsAsync(IdentityServerOptions options, IEventService eventSvc)
+        private static void DoStartupDiagnostics(IdentityServerOptions options, IEventService eventSvc)
         {
             var cert = options.SigningCertificate;
             
             if (cert == null)
             {
                 Logger.Warn("No signing certificate configured.");
-                await eventSvc.RaiseNoCertificateConfiguredEventAsync();
+                eventSvc.RaiseNoCertificateConfiguredEvent();
 
                 return;
             }
             if (!cert.HasPrivateKey || !cert.IsPrivateAccessAllowed())
             {
-                Logger.Error("Signing certificate has no private key or the private key is not accessible. Make sure the account running your application has access to the private key");
-                await eventSvc.RaiseCertificatePrivateKeyNotAccessibleEventAsync(cert);
+                Logger.Error("Signing certificate has not private key or private key is not accessible. Make sure the account running your application has access to the private key");
+                eventSvc.RaiseCertificatePrivateKeyNotAccessibleEvent(cert);
 
                 return;
             }
             if (cert.PublicKey.Key.KeySize < 2048)
             {
                 Logger.Error("Signing certificate key length is less than 2048 bits.");
-                await eventSvc.RaiseCertificateKeyLengthTooShortEventAsync(cert);
+                eventSvc.RaiseCertificateKeyLengthTooShortEvent(cert);
 
                 return;
             }
@@ -150,12 +133,12 @@ namespace Owin
             if (timeSpanToExpire < TimeSpan.FromDays(30))
             {
                 Logger.Warn("The signing certificate will expire in the next 30 days: " + cert.NotAfter.ToString());
-                await eventSvc.RaiseCertificateExpiringSoonEventAsync(cert);
+                eventSvc.RaiseCertificateExpiringSoonEvent(cert);
 
                 return;
             }
 
-            await eventSvc.RaiseCertificateValidatedEventAsync(cert);
+            eventSvc.RaiseCertificateValidatedEvent(cert);
         }
     }
 }

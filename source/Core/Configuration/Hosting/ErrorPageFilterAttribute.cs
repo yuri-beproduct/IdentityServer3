@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Resources;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.ViewModels;
 using System.Net.Http;
 using System.Web.Http.Filters;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Resources;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal class ErrorPageFilterAttribute : ExceptionFilterAttribute
     {
@@ -31,6 +31,8 @@ namespace IdentityServer3.Core.Configuration.Hosting
         
         public override async System.Threading.Tasks.Task OnExceptionAsync(HttpActionExecutedContext actionExecutedContext, System.Threading.CancellationToken cancellationToken)
         {
+            Logger.ErrorException("Exception accessing: " + actionExecutedContext.Request.RequestUri.AbsolutePath, actionExecutedContext.Exception);
+
             var env = actionExecutedContext.ActionContext.Request.GetOwinEnvironment();
             var options = env.ResolveDependency<IdentityServerOptions>();
             var viewSvc = env.ResolveDependency<IViewService>();

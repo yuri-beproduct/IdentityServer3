@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
 
 namespace Owin
 {

@@ -17,7 +17,7 @@
 using System.Collections.Generic;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Models an OpenID Connect or OAuth2 client
@@ -37,7 +37,7 @@ namespace IdentityServer3.Core.Models
         /// <summary>
         /// Client secrets - only relevant for flows that require a secret
         /// </summary>
-        public List<Secret> ClientSecrets { get; set; }
+        public List<ClientSecret> ClientSecrets { get; set; }
 
         /// <summary>
         /// Client display name (used for logging and consent screen)
@@ -89,33 +89,9 @@ namespace IdentityServer3.Core.Models
         public List<string> PostLogoutRedirectUris { get; set; }
         
         /// <summary>
-        /// Specifies logout URI at client for HTTP based logout.
+        /// Specifies the scopes that the client is allowed to request. If empty, the client can request all scopes (defaults to empty)
         /// </summary>
-        public string LogoutUri { get; set; }
-
-        /// <summary>
-        /// Specifies if the user's session id should be sent to the LogoutUri. Defaults to true.
-        /// </summary>
-        public bool LogoutSessionRequired { get; set; }
-
-        /// <summary>
-        /// Specifies if the client will always show a confirmation page for sign-out. Defaults to false.
-        /// </summary>
-        public bool RequireSignOutPrompt { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether the client has access to all scopes. Defaults to false.
-        /// You can set the allowed scopes via the AllowedScopes list.
-        /// </summary>
-        /// <value>
-        /// <c>true</c> if client has access to all scopes; otherwise, <c>false</c>.
-        /// </value>
-        public bool AllowAccessToAllScopes { get; set; }
-
-        /// <summary>
-        /// Specifies the scopes that the client is allowed to request. If empty, the client can't access any scope
-        /// </summary>
-        public List<string> AllowedScopes { get; set; }
+        public List<string> ScopeRestrictions { get; set; }
         
         /// <summary>
         /// Lifetime of identity token in seconds (defaults to 300 seconds / 5 minutes)
@@ -142,7 +118,7 @@ namespace IdentityServer3.Core.Models
         /// </summary>
         public int SlidingRefreshTokenLifetime { get; set; }
         
-        /// <summary>
+        /// /// <summary>
         /// ReUse: the refresh token handle will stay the same when refreshing tokens
         /// OneTime: the refresh token handle will be updated when refreshing tokens
         /// </summary>
@@ -158,7 +134,7 @@ namespace IdentityServer3.Core.Models
 
         /// <summary>
         /// Absolute: the refresh token will expire on a fixed point in time (specified by the AbsoluteRefreshTokenLifetime)
-        /// Sliding: when refreshing the token, the lifetime of the refresh token will be renewed (by the amount specified in SlidingRefreshTokenLifetime). The lifetime will not exceed AbsoluteRefreshTokenLifetime.
+        /// Sliding: when refreshing the token, the lifetime of the refresh token will be renewed (by the amount specified in SlidingRefreshTokenLifetime). The lifetime will not exceed 
         /// </summary>        
         public TokenExpiration RefreshTokenExpiration { get; set; }
         
@@ -208,26 +184,17 @@ namespace IdentityServer3.Core.Models
         /// Gets or sets a value indicating whether all client claims should be prefixed.
         /// </summary>
         /// <value>
-        /// <c>true</c> if client claims should be prefixed; otherwise, <c>false</c>.
+        ///   <c>true</c> if client claims should be prefixed; otherwise, <c>false</c>.
         /// </value>
         public bool PrefixClientClaims { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the client has access to all custom grant types. Defaults to false.
-        /// You can set the allowed custom grant types via the AllowedCustomGrantTypes list.
+        /// Gets or sets a list of allowed custom grant types when Flow is set to Custom. If the list is empty, all custom grant types are allowed.
         /// </summary>
         /// <value>
-        /// <c>true</c> if client has access to all custom grant types; otherwise, <c>false</c>.
+        /// The custom grant restrictions.
         /// </value>
-        public bool AllowAccessToAllCustomGrantTypes { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a list of allowed custom grant types when Flow is set to Custom.
-        /// </summary>
-        /// <value>
-        /// The allowed custom grant types.
-        /// </value>
-        public List<string> AllowedCustomGrantTypes { get; set; }
+        public List<string> CustomGrantTypeRestrictions { get; set; }
 
         /// <summary>
         /// Gets or sets the allowed CORS origins for JavaScript clients.
@@ -238,36 +205,23 @@ namespace IdentityServer3.Core.Models
         public List<string> AllowedCorsOrigins { get; set; }
 
         /// <summary>
-        /// Controls whether access tokens are transmitted via the browser for this client (defaults to true).
-        /// This can prevent accidental leakage of access tokens when multiple response types are allowed.
-        /// </summary>
-        /// <value>
-        /// <c>true</c> if access tokens can be transmitted via the browser; otherwise, <c>false</c>.
-        /// </value>
-        public bool AllowAccessTokensViaBrowser { get; set; }
-
-        /// <summary>
         /// Creates a Client with default values
         /// </summary>
         public Client()
         {
             Flow = Flows.Implicit;
             
-            ClientSecrets = new List<Secret>();
-            AllowedScopes = new List<string>();
+            ClientSecrets = new List<ClientSecret>();
+            ScopeRestrictions = new List<string>();
             RedirectUris = new List<string>();
             PostLogoutRedirectUris = new List<string>();
             IdentityProviderRestrictions = new List<string>();
-            AllowedCustomGrantTypes = new List<string>();
+            CustomGrantTypeRestrictions = new List<string>();
             AllowedCorsOrigins = new List<string>();
-
-            LogoutSessionRequired = true;
 
             Enabled = true;
             EnableLocalLogin = true;
-            AllowAccessToAllScopes = false;
-            AllowAccessToAllCustomGrantTypes = false;
-
+            
             // client claims settings
             Claims = new List<Claim>();
             AlwaysSendClientClaims = false;
@@ -293,8 +247,6 @@ namespace IdentityServer3.Core.Models
             
             RequireConsent = true;
             AllowRememberConsent = true;
-
-            AllowAccessTokensViaBrowser = true;
         }
     }
 }

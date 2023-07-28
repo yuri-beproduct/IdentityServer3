@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-using System.Threading.Tasks;
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// View loaded that loads HTML templates from the embedded assets.
@@ -27,9 +26,9 @@ namespace IdentityServer3.Core.Services.Default
         /// </summary>
         /// <param name="name">The name.</param>
         /// <returns></returns>
-        public Task<string> LoadAsync(string name)
+        public string Load(string name)
         {
-            return Task.FromResult(AssetManager.LoadLayoutWithPage(name));
+            return AssetManager.LoadLayoutWithPage(name);
         }
     }
 }

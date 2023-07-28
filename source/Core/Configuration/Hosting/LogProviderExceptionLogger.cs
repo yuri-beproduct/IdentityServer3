@@ -14,35 +14,29 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Services;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.ExceptionHandling;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal class LogProviderExceptionLogger : IExceptionLogger
     {
         private readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
 
-        public async Task LogAsync(ExceptionLoggerContext context, CancellationToken cancellationToken)
+        public Task LogAsync(ExceptionLoggerContext context, CancellationToken cancellationToken)
         {
-            if(context.Request != null)
-            {
-                var mesage = string.Format("Unhandled exception accessing: {0}", context.Request.RequestUri.AbsolutePath);
-                Logger.ErrorException(mesage, context.Exception);
-            }
-            else
-            {
-                Logger.ErrorException("Unhandled exception", context.Exception);
-            }
+            Logger.ErrorException("Unhandled exception", context.Exception);
 
             var env = context.Request.GetOwinEnvironment();
             var events = env.ResolveDependency<IEventService>();
-            await events.RaiseUnhandledExceptionEventAsync(context.Exception);
+            events.RaiseUnhandledExceptionEvent(context.Exception);
+
+            return Task.FromResult<object>(null);
         }
     }
 }

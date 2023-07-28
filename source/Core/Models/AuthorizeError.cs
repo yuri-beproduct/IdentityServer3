@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Validation;
 using System.ComponentModel;
+using Thinktecture.IdentityServer.Core.Validation;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class AuthorizeError

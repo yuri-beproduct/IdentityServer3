@@ -16,9 +16,8 @@
 
 using System;
 using System.IO;
-using System.Threading.Tasks;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// View loader that loads HTML templates from the file system.
@@ -49,7 +48,7 @@ namespace IdentityServer3.Core.Services.Default
         /// </summary>
         /// <param name="page">The page.</param>
         /// <returns></returns>
-        public Task<string> LoadAsync(string page)
+        public string Load(string page)
         {
             if (Directory.Exists(directory))
             {
@@ -59,7 +58,7 @@ namespace IdentityServer3.Core.Services.Default
                 // look for full file with name login.html
                 if (File.Exists(path))
                 {
-                    return Task.FromResult(File.ReadAllText(path));
+                    return File.ReadAllText(path);
                 }
 
                 var layoutName = Path.Combine(directory, "_layout.html");
@@ -78,10 +77,10 @@ namespace IdentityServer3.Core.Services.Default
 
                     if (layout != null)
                     {
-                        return Task.FromResult(AssetManager.ApplyContentToLayout(layout, partial));
+                        return AssetManager.ApplyContentToLayout(layout, partial);
                     }
 
-                    return Task.FromResult(AssetManager.LoadLayoutWithContent(partial));
+                    return AssetManager.LoadLayoutWithContent(partial);
                 }
 
                 // no partial, but layout might exist
@@ -89,11 +88,11 @@ namespace IdentityServer3.Core.Services.Default
                 {
                     // so load embedded asset page, but use custom layout
                     var content = AssetManager.LoadPage(page);
-                    return Task.FromResult(AssetManager.ApplyContentToLayout(layout, content));
+                    return AssetManager.ApplyContentToLayout(layout, content);
                 }
             }
 
-            return Task.FromResult<string>(null);
+            return null;
         }
     }
 }

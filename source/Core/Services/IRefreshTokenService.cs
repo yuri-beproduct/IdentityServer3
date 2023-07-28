@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
-using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Implements refresh token creation and validation
@@ -28,13 +27,10 @@ namespace IdentityServer3.Core.Services
         /// <summary>
         /// Creates the refresh token.
         /// </summary>
-        /// <param name="subject">The subject.</param>
         /// <param name="accessToken">The access token.</param>
         /// <param name="client">The client.</param>
-        /// <returns>
-        /// The refresh token handle
-        /// </returns>
-        Task<string> CreateRefreshTokenAsync(ClaimsPrincipal subject, Token accessToken, Client client);
+        /// <returns>The refresh token handle</returns>
+        Task<string> CreateRefreshTokenAsync(Token accessToken, Client client);
 
         /// <summary>
         /// Updates the refresh token.

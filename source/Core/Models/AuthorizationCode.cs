@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core.Extensions;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Modles an authorization code.
@@ -90,30 +90,6 @@ namespace IdentityServer3.Core.Models
         ///   <c>true</c> if consent was shown; otherwise, <c>false</c>.
         /// </value>
         public bool WasConsentShown { get; set; }
-
-        /// <summary>
-        /// Gets or sets the session identifier.
-        /// </summary>
-        /// <value>
-        /// The session identifier.
-        /// </value>
-        public string SessionId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the code challenge.
-        /// </summary>
-        /// <value>
-        /// The code challenge.
-        /// </value>
-        public string CodeChallenge { get; set; }
-
-        /// <summary>
-        /// Gets or sets the code challenge method.
-        /// </summary>
-        /// <value>
-        /// The code challenge method
-        /// </value>
-        public string CodeChallengeMethod { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthorizationCode"/> class.

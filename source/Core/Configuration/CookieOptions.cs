@@ -15,8 +15,9 @@
  */
 
 using System;
+using System.Collections.Generic;
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     /// <summary>
     /// Configured how cookies are managed by IdentityServer.
@@ -42,7 +43,7 @@ namespace IdentityServer3.Core.Configuration
         /// The prefix.
         /// </value>
         public string Prefix { get; set; }
-        
+
         /// <summary>
         /// The expiration duration of the authentication cookie. Defaults to 10 hours.
         /// </summary>
@@ -102,12 +103,8 @@ namespace IdentityServer3.Core.Configuration
         public CookieSecureMode SecureMode { get; set; }
 
         /// <summary>
-        /// An optional container in which to store the identity across requests. When used, only a session identifier is sent
-        /// to the client. This can be used to mitigate potential problems with very large identities.
+        /// Callback to indicate if cookie should comit the "SameSite=none" attribute.
         /// </summary>
-        public IAuthenticationSessionStoreProvider SessionStoreProvider { get; set; }
-
-
-
+        public Func<IDictionary<string, object>, bool> SuppressSameSiteNoneCookiesCallback { get; set; }
     }
 }

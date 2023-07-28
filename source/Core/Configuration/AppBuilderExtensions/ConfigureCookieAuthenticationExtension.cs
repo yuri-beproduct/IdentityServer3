@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Services;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.DataHandler;
 using System;
-using System.Security.Claims;
-using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Extensions;
 
 namespace Owin
 {
@@ -47,20 +44,8 @@ namespace Owin
                 ExpireTimeSpan = options.ExpireTimeSpan,
                 SlidingExpiration = options.SlidingExpiration,
                 CookieSecure = GetCookieSecure(options.SecureMode),
-                TicketDataFormat = new TicketDataFormat(new DataProtectorAdapter(dataProtector, options.Prefix + Constants.PrimaryAuthenticationType)),
-                SessionStore = GetSessionStore(options.SessionStoreProvider),
-                Provider = new CookieAuthenticationProvider
-                {
-                    OnValidateIdentity = async cookieCtx =>
-                    {
-                        var validator = cookieCtx.OwinContext.Environment.ResolveDependency<IAuthenticationSessionValidator>();
-                        var isValid = await validator.IsAuthenticationSessionValidAsync(new ClaimsPrincipal(cookieCtx.Identity));
-                        if (isValid == false)
-                        {
-                            cookieCtx.RejectIdentity();
-                        }
-                    }
-                }
+                CookieManager = new SameSiteChunkingCookieManager(),
+                TicketDataFormat = new TicketDataFormat(new DataProtectorAdapter(dataProtector, options.Prefix + Constants.PrimaryAuthenticationType))
             };
             app.UseCookieAuthentication(primary);
 
@@ -72,6 +57,7 @@ namespace Owin
                 ExpireTimeSpan = Constants.ExternalCookieTimeSpan,
                 SlidingExpiration = false,
                 CookieSecure = GetCookieSecure(options.SecureMode),
+                CookieManager = new SameSiteChunkingCookieManager(),
                 TicketDataFormat = new TicketDataFormat(new DataProtectorAdapter(dataProtector, options.Prefix + Constants.ExternalAuthenticationType))
             };
             app.UseCookieAuthentication(external);
@@ -84,6 +70,7 @@ namespace Owin
                 ExpireTimeSpan = options.ExpireTimeSpan,
                 SlidingExpiration = options.SlidingExpiration,
                 CookieSecure = GetCookieSecure(options.SecureMode),
+                CookieManager = new SameSiteChunkingCookieManager(),
                 TicketDataFormat = new TicketDataFormat(new DataProtectorAdapter(dataProtector, options.Prefix + Constants.PartialSignInAuthenticationType))
             };
             app.UseCookieAuthentication(partial);
@@ -96,7 +83,7 @@ namespace Owin
                     partial.CookiePath = path;
                 }
             };
-            
+
             if (String.IsNullOrWhiteSpace(options.Path))
             {
                 app.Use(async (ctx, next) =>
@@ -131,11 +118,6 @@ namespace Owin
                 default:
                     throw new InvalidOperationException("Invalid CookieSecureMode");
             }
-        }
-
-        private static IAuthenticationSessionStore GetSessionStore(IAuthenticationSessionStoreProvider provider)
-        {
-            return provider != null ? new AuthenticationSessionStoreWrapper(provider) : null;
         }
     }
 }

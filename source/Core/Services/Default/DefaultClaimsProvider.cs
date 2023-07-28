@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Validation;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Default claims provider implementation
@@ -33,7 +33,7 @@ namespace IdentityServer3.Core.Services.Default
         /// <summary>
         /// The logger
         /// </summary>
-        private readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
+        protected readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
 
         /// <summary>
         /// The user service
@@ -74,14 +74,7 @@ namespace IdentityServer3.Core.Services.Default
             {
                 Logger.Info("All claims rule found - emitting all claims for user.");
 
-                var context = new ProfileDataRequestContext(
-                    subject,
-                    client,
-                    Constants.ProfileDataCallers.ClaimsProviderIdentityToken);
-
-                await _users.GetProfileDataAsync(context);
-                
-                var claims = FilterProtocolClaims(context.IssuedClaims);
+                var claims = FilterProtocolClaims(await _users.GetProfileDataAsync(subject));
                 if (claims != null)
                 {
                     outputClaims.AddRange(claims);
@@ -107,15 +100,7 @@ namespace IdentityServer3.Core.Services.Default
 
             if (additionalClaims.Count > 0)
             {
-                var context = new ProfileDataRequestContext(
-                    subject,
-                    client,
-                    Constants.ProfileDataCallers.ClaimsProviderIdentityToken,
-                    additionalClaims);
-                
-                await _users.GetProfileDataAsync(context);
-
-                var claims = FilterProtocolClaims(context.IssuedClaims);
+                var claims = FilterProtocolClaims(await _users.GetProfileDataAsync(subject, additionalClaims));
                 if (claims != null)
                 {
                     outputClaims.AddRange(claims);
@@ -177,14 +162,7 @@ namespace IdentityServer3.Core.Services.Default
                 // if a include all claims rule exists, call the user service without a claims filter
                 if (scopes.IncludesAllClaimsForUserRule(ScopeType.Resource))
                 {
-                    var context = new ProfileDataRequestContext(
-                    subject,
-                    client,
-                    Constants.ProfileDataCallers.ClaimsProviderAccessToken);
-
-                    await _users.GetProfileDataAsync(context);
-
-                    var claims = FilterProtocolClaims(context.IssuedClaims);
+                    var claims = FilterProtocolClaims(await _users.GetProfileDataAsync(subject));
                     if (claims != null)
                     {
                         outputClaims.AddRange(claims);
@@ -194,7 +172,7 @@ namespace IdentityServer3.Core.Services.Default
                 }
 
 
-                // fetch all resource claims that need to go into the access token
+                // fetch all resource claims that need to go into the id token
                 var additionalClaims = new List<string>();
                 foreach (var scope in scopes)
                 {
@@ -212,15 +190,7 @@ namespace IdentityServer3.Core.Services.Default
 
                 if (additionalClaims.Count > 0)
                 {
-                    var context = new ProfileDataRequestContext(
-                    subject,
-                    client,
-                    Constants.ProfileDataCallers.ClaimsProviderAccessToken,
-                    additionalClaims.Distinct());
-
-                    await _users.GetProfileDataAsync(context);
-
-                    var claims = FilterProtocolClaims(context.IssuedClaims);
+                    var claims = FilterProtocolClaims(await _users.GetProfileDataAsync(subject, additionalClaims.Distinct()));
                     if (claims != null)
                     {
                         outputClaims.AddRange(claims);
@@ -241,11 +211,10 @@ namespace IdentityServer3.Core.Services.Default
             var claims = new List<Claim>
             {
                 new Claim(Constants.ClaimTypes.Subject, subject.GetSubjectId()),
+                new Claim(Constants.ClaimTypes.AuthenticationMethod, subject.GetAuthenticationMethod()),
                 new Claim(Constants.ClaimTypes.AuthenticationTime, subject.GetAuthenticationTimeEpoch().ToString(), ClaimValueTypes.Integer),
                 new Claim(Constants.ClaimTypes.IdentityProvider, subject.GetIdentityProvider()),
             };
-
-            claims.AddRange(subject.GetAuthenticationMethods());
 
             return claims;
         }

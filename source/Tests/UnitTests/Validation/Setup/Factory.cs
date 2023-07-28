@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.Default;
-using IdentityServer3.Core.Services.InMemory;
-using IdentityServer3.Core.Validation;
 using Microsoft.Owin;
 using Moq;
 using System.Collections.Generic;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.Default;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
     static class Factory
     {
@@ -34,29 +33,22 @@ namespace IdentityServer3.Tests.Validation
             return new InMemoryClientStore(TestClients.Get());
         }
 
-        public static DefaultTokenSigningService CreateDefaultTokenSigningService()
+        public static ClientValidator CreateClientValidator(
+            IClientStore clients = null,
+            IClientSecretValidator secretValidator = null)
         {
-            return new DefaultTokenSigningService(new DefaultSigningKeyService(TestIdentityServerOptions.Create()));
+            if (clients == null)
+            {
+                clients = new InMemoryClientStore(ClientValidationTestClients.Get());
+            }
+
+            if (secretValidator == null)
+            {
+                secretValidator = new HashedClientSecretValidator();
+            }
+
+            return new ClientValidator(clients, secretValidator);
         }
-
-        //public static ClientValidator CreateClientValidator(
-        //    IClientStore clients = null,
-        //    IClientSecretValidator secretValidator = null)
-        //{
-        //    if (clients == null)
-        //    {
-        //        clients = new InMemoryClientStore(ClientValidationTestClients.Get());
-        //    }
-
-        //    if (secretValidator == null)
-        //    {
-        //        secretValidator = new HashedClientSecretValidator();
-        //    }
-
-        //    var owin = new OwinEnvironmentService(new OwinContext());
-
-        //    return new ClientValidator(clients, secretValidator, owin);
-        //}
 
         public static TokenRequestValidator CreateTokenRequestValidator(
             IdentityServerOptions options = null,
@@ -64,7 +56,7 @@ namespace IdentityServer3.Tests.Validation
             IAuthorizationCodeStore authorizationCodeStore = null,
             IRefreshTokenStore refreshTokens = null,
             IUserService userService = null,
-            IEnumerable<ICustomGrantValidator> customGrantValidators = null,
+            ICustomGrantValidator customGrantValidator = null,
             ICustomRequestValidator customRequestValidator = null,
             ScopeValidator scopeValidator = null)
         {
@@ -88,16 +80,11 @@ namespace IdentityServer3.Tests.Validation
                 customRequestValidator = new DefaultCustomRequestValidator();
             }
 
-            CustomGrantValidator aggregateCustomValidator;
-            if (customGrantValidators == null)
+            if (customGrantValidator == null)
             {
-                aggregateCustomValidator = new CustomGrantValidator(new [] { new TestGrantValidator() });
+                customGrantValidator = new TestGrantValidator();
             }
-            else
-            {
-                aggregateCustomValidator = new CustomGrantValidator(customGrantValidators);
-            }
-                
+
             if (refreshTokens == null)
             {
                 refreshTokens = new InMemoryRefreshTokenStore();
@@ -113,7 +100,7 @@ namespace IdentityServer3.Tests.Validation
                 authorizationCodeStore, 
                 refreshTokens, 
                 userService, 
-                aggregateCustomValidator, 
+                customGrantValidator, 
                 customRequestValidator, 
                 scopeValidator, 
                 new DefaultEventService());
@@ -175,55 +162,16 @@ namespace IdentityServer3.Tests.Validation
             }
 
             var clients = CreateClientStore();
-            var options = TestIdentityServerOptions.Create();
-            options.Factory = new IdentityServerServiceFactory();
-            var context = CreateOwinContext(options, clients, users);
 
             var validator = new TokenValidator(
-                options: options,
+                options: TestIdentityServerOptions.Create(),
                 clients: clients,
                 tokenHandles: tokenStore,
                 customValidator: new DefaultCustomTokenValidator(
                     users: users,
-                    clients: clients),
-                owinEnvironment: new OwinEnvironmentService(context),
-                keyService: new DefaultSigningKeyService(options));
+                    clients: clients));
 
             return validator;
-        }
-
-        public static IOwinContext CreateOwinContext(IdentityServerOptions options, IClientStore clients, IUserService users)
-        {
-            options.Factory = options.Factory ?? new IdentityServerServiceFactory();
-            if (users != null)
-            {
-                options.Factory.UserService = new Registration<IUserService>(users);
-            }
-            if (options.Factory.UserService == null)
-            {
-                options.Factory.UseInMemoryUsers(new List<InMemoryUser>());
-            }
-
-            if (clients != null)
-            {
-                options.Factory.ClientStore = new Registration<IClientStore>(clients);
-            }
-            if (options.Factory.ClientStore == null)
-            {
-                options.Factory.UseInMemoryClients(new List<Client>());
-            }
-
-            if (options.Factory.ScopeStore == null)
-            {
-                options.Factory.UseInMemoryScopes(new List<Scope>());
-            }
-
-            var container = AutofacConfig.Configure(options);
-
-            var context = new OwinContext();
-            context.Set(Autofac.Integration.Owin.Constants.OwinLifetimeScopeKey, container);
-
-            return context;
         }
     }
 }

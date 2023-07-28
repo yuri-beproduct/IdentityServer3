@@ -15,10 +15,6 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Resources;
-using IdentityServer3.Core.ViewModels;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Google;
@@ -31,10 +27,14 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Resources;
+using Thinktecture.IdentityServer.Core.ViewModels;
 using Xunit;
-using AuthenticateResult = IdentityServer3.Core.Models.AuthenticateResult;
+using AuthenticateResult = Thinktecture.IdentityServer.Core.Models.AuthenticateResult;
 
-namespace IdentityServer3.Tests.Endpoints
+namespace Thinktecture.IdentityServer.Tests.Endpoints
 {
     public class AuthenticationControllerTests : IdSvrHostTestBase
     {
@@ -49,13 +49,7 @@ namespace IdentityServer3.Tests.Endpoints
                 props.Dictionary.Add(Constants.Authentication.SigninId, SignInId);
                 if(SignInIdentity.AuthenticationType == Constants.ExternalAuthenticationType)
                 {
-                    var issuer = "Google";
-                    var subClaim = SignInIdentity.FindFirst("sub");
-                    if (subClaim != null)
-                    {
-                        issuer = subClaim.Issuer;
-                    }
-                    props.Dictionary.Add(Constants.Authentication.KatanaAuthenticationType, issuer);
+                    props.Dictionary.Add(Constants.Authentication.KatanaAuthenticationType, "Google");
                 }
                 ctx.Authentication.SignIn(props, SignInIdentity);
                 SignInIdentity = null;
@@ -117,7 +111,9 @@ namespace IdentityServer3.Tests.Endpoints
             var resp = GetLoginPage(msg);
 
             resp.StatusCode.Should().Be(HttpStatusCode.Found);
-            resp.Headers.Location.AbsoluteUri.StartsWith("https://accounts.google.com").Should().BeTrue();
+            var expected = new Uri(Url(Constants.RoutePaths.LoginExternal));
+            resp.Headers.Location.AbsolutePath.Should().Be(expected.AbsolutePath);
+            resp.Headers.Location.Query.Should().Contain("provider=Google");
         }
 
         [Fact]
@@ -146,33 +142,6 @@ namespace IdentityServer3.Tests.Endpoints
 
             var model = resp.GetModel<LoginViewModel>();
             model.Username.Should().BeNull(); ;
-        }
-
-        [Fact]
-        public void PostToLogin_UserServiceReadsOwinRequestBody_Should_Read_Custom_Data()
-        {
-            var msg = new SignInMessage();
-            msg.LoginHint = "test";
-
-            var resp = GetLoginPage(msg);
-            var model = resp.GetModel<LoginViewModel>();
-
-            string customParam = null;
-            mockUserService.OnAuthenticateLocal = async ctx =>
-            {
-                var owin = new OwinContext(mockUserService.OwinEnvironmentService.Environment);
-                var form = await owin.Request.ReadFormAsync();
-                customParam = form["CustomParam"];
-            };
-
-            var data = new
-            {
-                username = "alice",
-                password = "password",
-                CustomParam = "some_value"
-            };
-            resp = PostForm(model.LoginUrl, data);
-            customParam.Should().Be("some_value");
         }
 
         [Fact]
@@ -232,11 +201,9 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void GetLogin_PreAuthenticateReturnsError_ShowsErrorPage()
         {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("SomeError");
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .ReturnsAsync(new AuthenticateResult("SomeError"));
 
             var resp = GetLoginPage();
             resp.AssertPage("error");
@@ -245,29 +212,11 @@ namespace IdentityServer3.Tests.Endpoints
         }
 
         [Fact]
-        public void GetLogin_PreAuthenticateReturnsErrorAndShowLoginPageOnErrorResultIsSet_ShowsLoginPageWithError()
-        {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("SomeError");
-                ctx.ShowLoginPageOnErrorResult = true;
-                return Task.FromResult(0);
-            };
-
-            var resp = GetLoginPage();
-            resp.AssertPage("login");
-            var model = resp.GetModel<LoginViewModel>();
-            model.ErrorMessage.Should().Be("SomeError");
-        }
-
-        [Fact]
         public void GetLogin_PreAuthenticateReturnsFullLogin_IssuesLoginCookie()
         {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult(IdentityServerPrincipal.Create("sub", "name"));
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult(IdentityServerPrincipal.Create("sub", "name"))));
 
             var resp = GetLoginPage();
             resp.AssertCookie(Constants.PrimaryAuthenticationType);
@@ -276,11 +225,9 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void GetLogin_PreAuthenticateReturnsFullLogin_RedirectsToReturnUrl()
         {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult(IdentityServerPrincipal.Create("sub", "name"));
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult(IdentityServerPrincipal.Create("sub", "name"))));
 
             var resp = GetLoginPage();
             resp.StatusCode.Should().Be(HttpStatusCode.Found);
@@ -290,11 +237,9 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void GetLogin_PreAuthenticateReturnsParialLogin_IssuesPartialLoginCookie()
         {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             var resp = GetLoginPage();
             resp.AssertCookie(Constants.PartialSignInAuthenticationType);
@@ -303,11 +248,9 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void GetLogin_PreAuthenticateReturnsParialLogin_IssuesRedirect()
         {
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             var resp = GetLoginPage();
             resp.StatusCode.Should().Be(HttpStatusCode.Found);
@@ -339,11 +282,9 @@ namespace IdentityServer3.Tests.Endpoints
             };
             Init();
 
-            mockUserService.OnPreAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService
+                .Setup(x => x.PreAuthenticateAsync(It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             var resp = GetLoginPage();
             resp.StatusCode.Should().Be(HttpStatusCode.Found);
@@ -440,9 +381,11 @@ namespace IdentityServer3.Tests.Endpoints
         {
             var msg = new SignInMessage();
             msg.IdP = "Google";
-            var resp = GetLoginPage(msg);
-            resp.StatusCode.Should().Be(HttpStatusCode.Found);
-            resp.Headers.Location.AbsoluteUri.StartsWith("https://accounts.google.com").Should().BeTrue();
+            var resp1 = GetLoginPage(msg);
+
+            var resp2 = client.GetAsync(resp1.Headers.Location.AbsoluteUri).Result;
+            resp2.StatusCode.Should().Be(HttpStatusCode.Found);
+            resp2.Headers.Location.AbsoluteUri.StartsWith("https://accounts.google.com").Should().BeTrue();
         }
 
         [Fact]
@@ -450,8 +393,10 @@ namespace IdentityServer3.Tests.Endpoints
         {
             var msg = new SignInMessage();
             msg.IdP = "Foo";
-            var resp = GetLoginPage(msg);
-            resp.AssertPage("error");
+            var resp1 = GetLoginPage(msg);
+
+            var resp2 = client.GetAsync(resp1.Headers.Location.AbsoluteUri).Result;
+            resp2.AssertPage("error");
         }
 
         [Fact]
@@ -463,8 +408,9 @@ namespace IdentityServer3.Tests.Endpoints
             msg.IdP = "Google";
             msg.ClientId = clientApp.ClientId;
 
-            var resp = GetLoginPage(msg);
-            resp.AssertPage("error");
+            var resp1 = GetLoginPage(msg);
+            var resp2 = client.GetAsync(resp1.Headers.Location.AbsoluteUri).Result;
+            resp2.AssertPage("error");
         }
 
         [Fact]
@@ -478,6 +424,7 @@ namespace IdentityServer3.Tests.Endpoints
             msg.ClientId = clientApp.ClientId;
 
             var resp = GetLoginPage(msg);
+            resp = client.GetAsync(resp.Headers.Location.AbsoluteUri).Result;
             resp.StatusCode.Should().Be(HttpStatusCode.Found);
             resp.Headers.Location.AbsoluteUri.StartsWith("https://accounts.google.com").Should().BeTrue();
         }
@@ -566,11 +513,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void PostToLogin_UserServiceReturnsError_ShowErrorPage()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("bad stuff");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("bad stuff")));
 
             GetLoginPage();
             var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -582,11 +526,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void PostToLogin_UserServiceReturnsNull_ShowErrorPage()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = null;
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult((AuthenticateResult)null));
 
             GetLoginPage();
             var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -598,11 +539,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void PostToLogin_UserServiceReturnsParialLogin_IssuesPartialLoginCookie()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             GetLoginPage();
             var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -612,11 +550,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void PostToLogin_UserServiceReturnsParialLogin_IssuesRedirect()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             GetLoginPage();
             var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -674,11 +609,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void PostToLogin_CookieOptionsIsPersistentIsTrueButResponseIsPartialLogin_DoesNotIssuePersistentCookie()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
             
             options.AuthenticationOptions.CookieOptions.IsPersistent = true;
             GetLoginPage();
@@ -689,85 +621,10 @@ namespace IdentityServer3.Tests.Endpoints
         }
 
         [Fact]
-        public void PostToLogin_PostAuthenticate_IsCalled()
-        {
-            GetLoginPage();
-            var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
-            mockUserService.PostAuthenticateWasCalled.Should().BeTrue();
-        }
-        
-        [Fact]
-        public void PostToLogin_PostAuthenticate_is_not_called_for_partial_logins()
-        {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("~/partial", "123", "foo", Enumerable.Empty<Claim>());
-                return Task.FromResult(0);
-            };
-
-            GetLoginPage();
-            var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
-            mockUserService.PostAuthenticateWasCalled.Should().BeFalse();
-        }
-
-        [Fact]
-        public void PostToLogin_PostAuthenticate_returns_error_and_error_page_is_rendered_and_user_is_not_logged_in()
-        {
-            mockUserService.OnPostAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("some error");
-                return Task.FromResult(0);
-            };
-
-            GetLoginPage();
-            var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
-            resp.AssertPage("error");
-
-            var cookies = resp.GetRawCookies();
-            cookies.Count(x => x.StartsWith(Constants.PrimaryAuthenticationType + "=")).Should().Be(0);
-        }
-
-        [Fact]
-        public void PostToLogin_PostAuthenticateReturnsErrorAndShowLoginPageOnErrorResultIsSet_ShowsLoginPageWithError()
-        {
-            mockUserService.OnPostAuthenticate = ctx => {
-                ctx.AuthenticateResult = new AuthenticateResult("SomeError");
-                ctx.ShowLoginPageOnErrorResult = true;
-                return Task.FromResult(0);
-            };
-            
-            GetLoginPage();
-            var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
-            resp.AssertPage("login");
-            var model = resp.GetModel<LoginViewModel>();
-            model.ErrorMessage.Should().Be("SomeError");
-        }
-
-        [Fact]
-        public void PostToLogin_PostAuthenticate_returns_partial_login_and_user_is_not_logged_in()
-        {
-            mockUserService.OnPostAuthenticate = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("~/foo", "123", "bob");
-                return Task.FromResult(0);
-            };
-
-            GetLoginPage();
-            var resp = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
-            resp.Headers.Location.AbsoluteUri.Should().Be(Url("foo"));
-            var cookies = resp.GetRawCookies();
-            cookies.Count(x => x.StartsWith(Constants.PrimaryAuthenticationType + "=")).Should().Be(0);
-            cookies.Count(x => x.StartsWith(Constants.PartialSignInAuthenticationType + "=")).Should().Be(1);
-        }
-
-        [Fact]
         public void ResumeLoginFromRedirect_WithPartialCookie_IssuesFullLoginCookie()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             GetLoginPage();
             var resp1 = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -779,11 +636,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void ResumeLoginFromRedirect_WithPartialCookie_IssuesRedirectToAuthorizationPage()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             GetLoginPage();
             var resp1 = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -797,11 +651,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void ResumeLoginFromRedirect_WithoutPartialCookie_ShowsError()
         {
-            mockUserService.OnAuthenticateLocal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("/foo", "tempsub", "tempname");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateLocalAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("/foo", "tempsub", "tempname")));
 
             GetLoginPage();
             var resp1 = PostForm(GetLoginUrl(), new LoginCredentials { Username = "alice", Password = "alice" });
@@ -846,53 +697,10 @@ namespace IdentityServer3.Tests.Endpoints
         }
 
         [Fact]
-        public void Logout_SignOutMessagePassed_RequireSignOutPromptSet_ShowsLogoutPromptPage()
-        {
-            this.options.AuthenticationOptions.RequireSignOutPrompt = true;
-
-            Login();
-
-            var id = WriteMessageToCookie(new SignOutMessage { ClientId = "foo", ReturnUrl = "http://foo" });
-            var resp = Get(Constants.RoutePaths.Logout + "?id=" + id);
-            resp.AssertPage("logout");
-        }
-
-        [Fact]
-        public void Logout_SignOutMessagePassed_ClientRequireSignOutPromptSet_ShowsLogoutPromptPage()
-        {
-            this.clients.Single(x => x.ClientId == "implicitclient").RequireSignOutPrompt = true;
-
-            Login();
-
-            var id = WriteMessageToCookie(new SignOutMessage { ClientId = "implicitclient", ReturnUrl = "http://foo" });
-            var resp = Get(Constants.RoutePaths.Logout + "?id=" + id);
-            resp.AssertPage("logout");
-        }
-
-        [Fact]
-        public void PostToLogout_SignOutMessagePassed_RequireSignOutPromptSet_LogoutPageHasReturnUrlInfo()
-        {
-            this.options.AuthenticationOptions.RequireSignOutPrompt = true;
-
-            Login();
-
-            var id = WriteMessageToCookie(new SignOutMessage { ClientId = "implicitclient", ReturnUrl = "http://foo" });
-            var resp = Get(Constants.RoutePaths.Logout + "?id=" + id);
-
-            var logoutModel = resp.GetModel<LogoutViewModel>();
-            resp = PostForm(logoutModel.LogoutUrl, new { });
-
-            var loggedOutModel = resp.GetModel<LoggedOutViewModel>();
-
-            loggedOutModel.ClientName.Should().Be("Implicit Clients");
-            loggedOutModel.RedirectUrl.Should().Be("http://foo");
-        }
-
-        [Fact]
         public void PostToLogout_AnonymousUser_DoesNotInvokeUserServiceSignOut()
         {
             var resp = PostForm(Constants.RoutePaths.Logout, (string)null);
-            this.mockUserService.SignOutWasCalled.Should().BeFalse();
+            this.mockUserService.Verify(x => x.SignOutAsync(It.IsAny<ClaimsPrincipal>()), Times.Never());
         }
         
         [Fact]
@@ -901,7 +709,7 @@ namespace IdentityServer3.Tests.Endpoints
             Login();
 
             var resp = PostForm(Constants.RoutePaths.Logout, (string)null);
-            this.mockUserService.SignOutWasCalled.Should().BeTrue();
+            this.mockUserService.Verify(x => x.SignOutAsync(It.IsAny<ClaimsPrincipal>()));
         }
 
         [Fact]
@@ -911,12 +719,12 @@ namespace IdentityServer3.Tests.Endpoints
 
             var resp = PostForm(Constants.RoutePaths.Logout, (string)null);
             var cookies = resp.Headers.GetValues("Set-Cookie");
-            // cookies: primary, partial, external
-            cookies.Count().Should().Be(3);
+            // cookies: primary, partial, external, session, signout
+            cookies.Count().Should().Be(5);
             // GetCookies will not return values for cookies that are expired/revoked
             resp.GetCookies().Count().Should().Be(0);
         }
-
+        
         [Fact]
         public void PostToLogout_EmitsLogoutUrlsForProtocolIframes()
         {
@@ -927,7 +735,7 @@ namespace IdentityServer3.Tests.Endpoints
             var model = resp.GetModel<LoggedOutViewModel>();
             var signOutUrls = model.IFrameUrls.ToArray();
             signOutUrls.Length.Should().Be(2);
-            signOutUrls.Should().Contain(x => x.StartsWith(Url(Constants.RoutePaths.Oidc.EndSessionCallback)));
+            signOutUrls.Should().Contain(Url(Constants.RoutePaths.Oidc.EndSessionCallback));
             signOutUrls.Should().Contain(Url("/foo/signout"));
         }
 
@@ -1031,11 +839,8 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void LoginExternalCallback_UserServiceReturnsError_ShowsError()
         {
-            mockUserService.OnAuthenticateExternal = ctx =>
-            {
-                ctx.AuthenticateResult = new AuthenticateResult("foo bad");
-                return Task.FromResult(0);
-            };
+            mockUserService.Setup(x => x.AuthenticateExternalAsync(It.IsAny<ExternalIdentity>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult(new AuthenticateResult("foo bad")));
             
             var msg = new SignInMessage();
             msg.IdP = "Google";
@@ -1056,12 +861,9 @@ namespace IdentityServer3.Tests.Endpoints
         [Fact]
         public void LoginExternalCallback_UserServiceReturnsNull_ShowError()
         {
-            mockUserService.OnAuthenticateExternal = ctx =>
-            {
-                ctx.AuthenticateResult = null;
-                return Task.FromResult(0);
-            };
-            
+            mockUserService.Setup(x => x.AuthenticateExternalAsync(It.IsAny<ExternalIdentity>(), It.IsAny<SignInMessage>()))
+                .Returns(Task.FromResult((AuthenticateResult)null));
+
             var msg = new SignInMessage();
             msg.IdP = "Google";
             msg.ReturnUrl = Url("authorize");
@@ -1093,24 +895,7 @@ namespace IdentityServer3.Tests.Endpoints
 
             Get(Constants.RoutePaths.LoginExternalCallback);
 
-            mockUserService.AuthenticateExternalWasCalled.Should().BeTrue();
-        }
-
-        [Fact]
-        public void LoginExternalCallback_UsersIdPDoesNotMatchSignInIdP_DisplaysErrorPage()
-        {
-            var msg = new SignInMessage();
-            msg.IdP = "Google";
-            msg.ReturnUrl = Url("authorize");
-            var resp1 = GetLoginPage(msg);
-
-            var sub = new Claim(Constants.ClaimTypes.Subject, "999", ClaimValueTypes.String, "Google2");
-            SignInIdentity = new ClaimsIdentity(new Claim[] { sub }, Constants.ExternalAuthenticationType);
-            var resp2 = client.GetAsync(resp1.Headers.Location.AbsoluteUri).Result;
-            client.SetCookies(resp2.GetCookies());
-
-            var response = Get(Constants.RoutePaths.LoginExternalCallback);
-            response.AssertPage("error");
+            mockUserService.Verify(x => x.AuthenticateExternalAsync(It.IsAny<ExternalIdentity>(), It.IsAny<SignInMessage>()));
         }
 
         [Fact]
@@ -1205,7 +990,7 @@ namespace IdentityServer3.Tests.Endpoints
         string GetLongString()
         {
             string value = "x";
-            var parts = new string[IdentityServer3.Core.Endpoints.AuthenticationController.MaxSignInMessageLength+1];
+            var parts = new string[Thinktecture.IdentityServer.Core.Endpoints.AuthenticationController.MaxInputParamLength+1];
             return parts.Aggregate((x, y) => (x??value) + value);
         }
 
@@ -1328,8 +1113,10 @@ namespace IdentityServer3.Tests.Endpoints
         {
             var msg = new SignInMessage();
             msg.IdP = "Google" + GetLongString();
-            var resp = GetLoginPage(msg);
-            resp.AssertPage("error");
+            var resp1 = GetLoginPage(msg);
+
+            var resp2 = client.GetAsync(resp1.Headers.Location.AbsoluteUri).Result;
+            resp2.AssertPage("error");
         }
 
         [Fact]

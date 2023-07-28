@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Validation;
-using IdentityServer3.Core.ViewModels;
 using System.IO;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Models loading the necessary HTML pages displayed by IdentityServer.
@@ -39,31 +38,22 @@ namespace IdentityServer3.Core.Services
         /// Loads the HTML for the logout prompt page.
         /// </summary>
         /// <param name="model">The model.</param>
-        /// <param name="message">The message.</param>
-        /// <returns>
-        /// Stream for the HTML
-        /// </returns>
-        Task<Stream> Logout(LogoutViewModel model, SignOutMessage message);
+        /// <returns>Stream for the HTML</returns>
+        Task<Stream> Logout(LogoutViewModel model);
 
         /// <summary>
         /// Loads the HTML for the logged out page informing the user that they have successfully logged out.
         /// </summary>
         /// <param name="model">The model.</param>
-        /// <param name="message">The message.</param>
-        /// <returns>
-        /// Stream for the HTML
-        /// </returns>
-        Task<Stream> LoggedOut(LoggedOutViewModel model, SignOutMessage message);
+        /// <returns>Stream for the HTML</returns>
+        Task<Stream> LoggedOut(LoggedOutViewModel model);
 
         /// <summary>
         /// Loads the HTML for the user consent page.
         /// </summary>
         /// <param name="model">The model.</param>
-        /// <param name="authorizeRequest">The validated authorize request.</param>
-        /// <returns>
-        /// Stream for the HTML
-        /// </returns>
-        Task<Stream> Consent(ConsentViewModel model, ValidatedAuthorizeRequest authorizeRequest);
+        /// <returns>Stream for the HTML</returns>
+        Task<Stream> Consent(ConsentViewModel model);
 
         /// <summary>
         /// Loads the HTML for the client permissions page.

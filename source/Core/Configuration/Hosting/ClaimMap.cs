@@ -18,7 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal class ClaimMap
     {

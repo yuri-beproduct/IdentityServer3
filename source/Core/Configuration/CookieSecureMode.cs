@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     /// <summary>
     /// Indicates if secure flag should be issued for a cookie.

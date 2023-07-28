@@ -18,7 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Implementation of claims filter that filters out the claim types indicated.

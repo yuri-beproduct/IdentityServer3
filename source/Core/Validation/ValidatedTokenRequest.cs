@@ -14,32 +14,16 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
     /// Models a validated request to the token endpoint.
     /// </summary>
     public class ValidatedTokenRequest : ValidatedRequest
     {
-        /// <summary>
-        /// Initializes the validated request with default values.
-        /// </summary>
-        public ValidatedTokenRequest()
-        {
-            RequestedTokenType = RequestedTokenTypes.Bearer;
-        }
-
-        /// <summary>
-        /// Gets or sets the requested token type.
-        /// </summary>
-        /// <value>
-        /// The requested token type.
-        /// </value>
-        public RequestedTokenTypes RequestedTokenType { get; set; }
-
         /// <summary>
         /// Gets or sets the client.
         /// </summary>
@@ -111,29 +95,5 @@ namespace IdentityServer3.Core.Validation
         /// The authorization code handle.
         /// </value>
         public string AuthorizationCodeHandle { get; set; }
-
-        /// <summary>
-        /// Gets or sets the code verifier.
-        /// </summary>
-        /// <value>
-        /// The code verifier.
-        /// </value>
-        public string CodeVerifier { get; set; }
-
-        /// <summary>
-        /// Gets or sets the algorithm used for the proof key
-        /// </summary>
-        /// <value>
-        /// The algorithm name.
-        /// </value>
-        public string ProofKeyAlgorithm { get; set; }
-
-        /// <summary>
-        /// Gets or sets the proof key
-        /// </summary>
-        /// <value>
-        /// The proof key.
-        /// </value>
-        public string ProofKey { get; set; }
     }
 }

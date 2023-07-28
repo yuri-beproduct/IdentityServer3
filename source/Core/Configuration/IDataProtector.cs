@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     /// <summary>
     /// Models protecting data needed by the server (e.g. cookies).

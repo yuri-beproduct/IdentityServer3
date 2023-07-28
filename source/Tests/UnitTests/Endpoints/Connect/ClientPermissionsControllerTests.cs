@@ -15,18 +15,18 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Resources;
-using IdentityServer3.Core.ViewModels;
-using IdentityServer3.Tests.Endpoints;
 using System.Linq;
 using System.Net;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Resources;
+using Thinktecture.IdentityServer.Core.ViewModels;
+using Thinktecture.IdentityServer.Tests.Endpoints;
 using Xunit;
 
-namespace IdentityServer3.Tests.Connect.Endpoints
+namespace Thinktecture.IdentityServer.Tests.Connect.Endpoints
 {
-
+    
     public class ClientPermissionsControllerTests : IdSvrHostTestBase
     {
         string clientId;
@@ -63,11 +63,7 @@ namespace IdentityServer3.Tests.Connect.Endpoints
         [Fact]
         public void ShowPermissions_EndpointDisabled_ReturnsNotFound()
         {
-            ConfigureIdentityServerOptions = options =>
-            {
-                options.Endpoints.EnableClientPermissionsEndpoint = false;
-            };
-            base.Init();
+            base.options.Endpoints.EnableClientPermissionsEndpoint = false;
             Login();
             var resp = Get(Constants.RoutePaths.ClientPermissions);
             resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -76,11 +72,7 @@ namespace IdentityServer3.Tests.Connect.Endpoints
         [Fact]
         public void RevokePermission_EndpointDisabled_ReturnsNotFound()
         {
-            ConfigureIdentityServerOptions = options =>
-            {
-                options.Endpoints.EnableClientPermissionsEndpoint = false;
-            };
-            base.Init();
+            base.options.Endpoints.EnableClientPermissionsEndpoint = false;
             Login();
             var resp = PostForm(Constants.RoutePaths.ClientPermissions, new { ClientId = clientId });
             resp.StatusCode.Should().Be(HttpStatusCode.NotFound);

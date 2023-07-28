@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Scope retrieval

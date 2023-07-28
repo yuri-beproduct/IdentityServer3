@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     /// <summary>
     /// Configures Content Security Policy (CSP) for HTML pages rendered by IdentityServer.
@@ -36,7 +36,7 @@ namespace IdentityServer3.Core.Configuration
         ///   <c>true</c> if enabled; otherwise, <c>false</c>.
         /// </value>
         public bool Enabled { get; set; }
-
+        
         /// <summary>
         /// Allows additional script sources to be indicated.
         /// </summary>
@@ -44,7 +44,7 @@ namespace IdentityServer3.Core.Configuration
         /// The script source.
         /// </value>
         public string ScriptSrc { get; set; }
-
+ 
         /// <summary>
         /// Allows additional style sources to be indicated.
         /// </summary>
@@ -60,7 +60,7 @@ namespace IdentityServer3.Core.Configuration
         /// The font source.
         /// </value>
         public string FontSrc { get; set; }
-
+        
         /// <summary>
         /// Allows additional connect sources to be indicated.
         /// </summary>
@@ -68,21 +68,5 @@ namespace IdentityServer3.Core.Configuration
         /// The connect source.
         /// </value>
         public string ConnectSrc { get; set; }
-
-        /// <summary>
-        /// Allows additional image sources to be indicated.
-        /// </summary>
-        /// <value>
-        /// The connect source.
-        /// </value>
-        public string ImgSrc { get; set; }
-        
-        /// <summary>
-        /// Allows additional iframe sources to be indicated.
-        /// </summary>
-        /// <value>
-        /// The connect source.
-        /// </value>
-        public string FrameSrc { get; set; }
     }
 }

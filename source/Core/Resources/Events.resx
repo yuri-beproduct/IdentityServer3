@@ -159,7 +159,4 @@
   <data name="ResourceOwnerFlowLoginSuccess" xml:space="preserve">
     <value>Resource Owner Password Flow Login Success</value>
   </data>
-  <data name="TokenRevoked" xml:space="preserve">
-    <value>Token Revoked Event</value>
-  </data>
 </root>

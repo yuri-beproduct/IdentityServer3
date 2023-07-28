@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Validation;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Models the data to create a token from a validated request.
@@ -92,14 +92,6 @@ namespace IdentityServer3.Core.Models
         /// The nonce.
         /// </value>
         public string Nonce { get; set; }
-
-        /// <summary>
-        /// Gets or sets proof key that should be bound to the token.
-        /// </summary>
-        /// <value>
-        /// The key.
-        /// </value>
-        public string ProofKey { get; set; }
 
         internal void Validate()
         {

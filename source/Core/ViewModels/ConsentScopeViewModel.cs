@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.ViewModels
+namespace Thinktecture.IdentityServer.Core.ViewModels
 {
     /// <summary>
     /// Models an individual scope to display on the consent page.

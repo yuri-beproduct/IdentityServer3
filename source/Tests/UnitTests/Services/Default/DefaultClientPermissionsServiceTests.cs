@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
 
-namespace IdentityServer3.Tests.Services.Default
+namespace Thinktecture.IdentityServer.Tests.Services.Default
 {
     public class DefaultClientPermissionsServiceTests
     {

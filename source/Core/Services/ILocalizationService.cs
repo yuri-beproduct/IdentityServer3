@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Models loading localizable strings.

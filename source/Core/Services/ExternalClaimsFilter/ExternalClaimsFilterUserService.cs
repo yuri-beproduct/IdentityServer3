@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System;
+using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     internal class ExternalClaimsFilterUserService : IUserService
     {
@@ -34,40 +36,35 @@ namespace IdentityServer3.Core.Services.Default
             this.inner = inner;
         }
 
-        public Task PreAuthenticateAsync(PreAuthenticationContext context)
+        public Task<AuthenticateResult> PreAuthenticateAsync(SignInMessage message)
         {
-            return inner.PreAuthenticateAsync(context);
+            return inner.PreAuthenticateAsync(message);
         }
 
-        public Task AuthenticateLocalAsync(LocalAuthenticationContext context)
+        public Task<AuthenticateResult> AuthenticateLocalAsync(string username, string password, SignInMessage message = null)
         {
-            return inner.AuthenticateLocalAsync(context);
+            return inner.AuthenticateLocalAsync(username, password, message);
         }
 
-        public Task AuthenticateExternalAsync(ExternalAuthenticationContext context)
+        public Task<AuthenticateResult> AuthenticateExternalAsync(ExternalIdentity externalUser, SignInMessage message)
         {
-            context.ExternalIdentity.Claims = filter.Filter(context.ExternalIdentity.Provider, context.ExternalIdentity.Claims);
-            return inner.AuthenticateExternalAsync(context);
+            externalUser.Claims = filter.Filter(externalUser.Provider, externalUser.Claims);
+            return inner.AuthenticateExternalAsync(externalUser, message);
         }
 
-        public Task PostAuthenticateAsync(PostAuthenticationContext context)
+        public Task<IEnumerable<Claim>> GetProfileDataAsync(ClaimsPrincipal subject, IEnumerable<string> requestedClaimTypes = null)
         {
-            return inner.PostAuthenticateAsync(context);
-        }
-        
-        public Task GetProfileDataAsync(ProfileDataRequestContext context)
-        {
-            return inner.GetProfileDataAsync(context);
+            return inner.GetProfileDataAsync(subject, requestedClaimTypes);
         }
 
-        public Task IsActiveAsync(IsActiveContext context)
+        public Task<bool> IsActiveAsync(ClaimsPrincipal subject)
         {
-            return inner.IsActiveAsync(context);
+            return inner.IsActiveAsync(subject);
         }
 
-        public Task SignOutAsync(SignOutContext context)
+        public Task SignOutAsync(ClaimsPrincipal subject)
         {
-            return inner.SignOutAsync(context);
+            return inner.SignOutAsync(subject);
         }
     }
 }

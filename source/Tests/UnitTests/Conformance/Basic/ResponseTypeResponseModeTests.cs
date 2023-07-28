@@ -15,14 +15,15 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
 using Xunit;
 
-namespace IdentityServer3.Tests.Conformance.Basic
+namespace Thinktecture.IdentityServer.Tests.Conformance.Basic
 {
     public class ResponseTypeResponseModeTests : IdentityServerHostTest
     {
@@ -39,14 +40,11 @@ namespace IdentityServer3.Tests.Conformance.Basic
             {
                 Enabled = true,
                 ClientId = client_id,
-                ClientSecrets = new List<Secret>
+                ClientSecrets = new List<ClientSecret>
                 {
-                    new Secret(client_secret)
+                    new ClientSecret(client_secret)
                 },
-
                 Flow = Flows.AuthorizationCode,
-                AllowAccessToAllScopes = true,
-                
                 RequireConsent = false,
                 RedirectUris = new List<string>
                 {

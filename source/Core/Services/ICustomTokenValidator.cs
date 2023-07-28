@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Validation;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Allows inserting custom token validation logic

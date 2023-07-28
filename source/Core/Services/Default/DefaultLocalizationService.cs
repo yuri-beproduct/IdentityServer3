@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Resources;
+using Thinktecture.IdentityServer.Core.Resources;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Default localization services. Uses embedded resource files for strings.

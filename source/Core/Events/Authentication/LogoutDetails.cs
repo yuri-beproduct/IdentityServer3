@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
-
-namespace IdentityServer3.Core.Events
+using Thinktecture.IdentityServer.Core.Models;
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Event details for logout events

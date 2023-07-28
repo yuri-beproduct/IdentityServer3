@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
     class TestClients
     {
@@ -27,425 +27,294 @@ namespace IdentityServer3.Tests.Validation
             {
                 new Client
                 {
-                    ClientName = "Code Client",
-                    Enabled = true,
-                    ClientId = "codeclient",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
+                        ClientName = "Code Client",
+                        Enabled = true,
+                        ClientId = "codeclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.AuthorizationCode,
+                        
+                        RequireConsent = false,
+                    
+                        RedirectUris = new List<string>
+                        {
+                            "https://server/cb",
+                        },
+
+                        AuthorizationCodeLifetime = 60
                     },
 
-                    Flow = Flows.AuthorizationCode,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
-                    {
-                        "https://server/cb",
-                    },
-
-                    AuthorizationCodeLifetime = 60
-                },
-
-                new Client
+                    new Client
                 {
-                    ClientName = "Code with Proof Key Client",
-                    Enabled = true,
-                    ClientId = "codewithproofkeyclient",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
+                        ClientName = "Hybrid Client",
+                        Enabled = true,
+                        ClientId = "hybridclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.AuthorizationCode,
+                        
+                        RequireConsent = false,
+                    
+                        RedirectUris = new List<string>
+                        {
+                            "https://server/cb",
+                        },
+
+                        AuthorizationCodeLifetime = 60
                     },
-
-                    Flow = Flows.AuthorizationCodeWithProofKey,
-                    AllowAccessToAllScopes = true,
-                    AllowAccessTokensViaBrowser = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "https://server/cb",
+                        ClientName = "Implicit Client",
+                        Enabled = true,
+                        ClientId = "implicitclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.Implicit,
+                        RequireConsent = false,
+                    
+                        RedirectUris = new List<string>
+                        {
+                            "oob://implicit/cb"
+                        },
                     },
-
-                    AuthorizationCodeLifetime = 60
-                },
-
-                new Client
-                {
-                    ClientName = "Hybrid Client",
-                    Enabled = true,
-                    ClientId = "hybridclient",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Implicit and Client Credentials Client",
+                        Enabled = true,
+                        ClientId = "implicit_and_client_creds_client",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.Implicit,
+                        AllowClientCredentialsOnly = true,
+                        RequireConsent = false,
+                    
+                        RedirectUris = new List<string>
+                        {
+                            "oob://implicit/cb"
+                        },
                     },
-
-                    Flow = Flows.Hybrid,
-                    AllowAccessTokensViaBrowser = true,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "https://server/cb",
+                        ClientName = "Code Client with Scope Restrictions",
+                        Enabled = true,
+                        ClientId = "codeclient_restricted",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.AuthorizationCode,
+                        RequireConsent = false,
+
+                        ScopeRestrictions = new List<string>
+                        {
+                            "openid"
+                        },
+                    
+                        RedirectUris = new List<string>
+                        {
+                            "https://server/cb",
+                        },
                     },
-
-                    AuthorizationCodeLifetime = 60
-                },
-
-                new Client
-                {
-                    ClientName = "Hybrid Client - No Access Token via Browser",
-                    Enabled = true,
-                    ClientId = "hybridclient.nobrowser",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Client Credentials Client",
+                        Enabled = true,
+                        ClientId = "client",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ClientCredentials,
+                        AccessTokenType = AccessTokenType.Jwt
                     },
-
-                    Flow = Flows.Hybrid,
-                    AllowAccessTokensViaBrowser = false,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "https://server/cb",
+                        ClientName = "Client Credentials Client (restricted)",
+                        Enabled = true,
+                        ClientId = "client_restricted",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ClientCredentials,
+
+                        ScopeRestrictions = new List<string>
+                        {
+                            "resource"
+                        },       
                     },
-
-                    AuthorizationCodeLifetime = 60
-                },
-
-                new Client
-                {
-                    ClientName = "Hybrid with Proof Key Client",
-                    Enabled = true,
-                    ClientId = "hybridwithproofkeyclient",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Resource Owner Client",
+                        Enabled = true,
+                        ClientId = "roclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
                     },
-
-                    Flow = Flows.HybridWithProofKey,
-                    AllowAccessTokensViaBrowser = true,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "https://server/cb",
+                        ClientName = "Resource Owner Client",
+                        Enabled = true,
+                        ClientId = "roclient_absolute_refresh_expiration_one_time_only",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        RefreshTokenExpiration = TokenExpiration.Absolute,
+                        RefreshTokenUsage = TokenUsage.OneTimeOnly,
+                        AbsoluteRefreshTokenLifetime = 200
                     },
-
-                    AuthorizationCodeLifetime = 60
-                },
-
-                new Client
-                {
-                    ClientName = "Implicit Client",
-                    Enabled = true,
-                    ClientId = "implicitclient",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Resource Owner Client",
+                        Enabled = true,
+                        ClientId = "roclient_absolute_refresh_expiration_reuse",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        RefreshTokenExpiration = TokenExpiration.Absolute,
+                        RefreshTokenUsage = TokenUsage.ReUse,
+                        AbsoluteRefreshTokenLifetime = 200
                     },
-
-                    Flow = Flows.Implicit,
-                    AllowAccessTokensViaBrowser = true,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "oob://implicit/cb"
+                        ClientName = "Resource Owner Client",
+                        Enabled = true,
+                        ClientId = "roclient_sliding_refresh_expiration_one_time_only",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        RefreshTokenExpiration = TokenExpiration.Sliding,
+                        RefreshTokenUsage = TokenUsage.OneTimeOnly,
+                        AbsoluteRefreshTokenLifetime = 10,
+                        SlidingRefreshTokenLifetime = 4
                     },
-                },
-                new Client
-                {
-                    ClientName = "Implicit Client - No Access Token via Browser",
-                    Enabled = true,
-                    ClientId = "implicitclient.nobrowser",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Resource Owner Client",
+                        Enabled = true,
+                        ClientId = "roclient_sliding_refresh_expiration_reuse",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        RefreshTokenExpiration = TokenExpiration.Sliding,
+                        RefreshTokenUsage = TokenUsage.ReUse,
+                        AbsoluteRefreshTokenLifetime = 200,
+                        SlidingRefreshTokenLifetime = 100
                     },
-
-                    Flow = Flows.Implicit,
-                    AllowAccessTokensViaBrowser = false,
-                    AllowAccessToAllScopes = true,
-
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "oob://implicit/cb"
+                        ClientName = "Resource Owner Client (restricted)",
+                        Enabled = true,
+                        ClientId = "roclient_restricted",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        ScopeRestrictions = new List<string>
+                        {
+                            "resource"
+                        },       
                     },
-                },
-                new Client
-                {
-                    ClientName = "Implicit and Client Credentials Client",
-                    Enabled = true,
-                    ClientId = "implicit_and_client_creds_client",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Resource Owner Client (restricted with refresh)",
+                        Enabled = true,
+                        ClientId = "roclient_restricted_refresh",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.ResourceOwner,
+
+                        ScopeRestrictions = new List<string>
+                        {
+                            "resource",
+                            "offline_access"
+                        },       
                     },
-
-                    Flow = Flows.Implicit,
-                    AllowAccessTokensViaBrowser = true,
-                    AllowAccessToAllScopes = true,
-                    AllowClientCredentialsOnly = true,
-                    RequireConsent = false,
-
-                    RedirectUris = new List<string>
+                    new Client
                     {
-                        "oob://implicit/cb"
+                        ClientName = "Custom Grant Client",
+                        Enabled = true,
+                        ClientId = "customgrantclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
+
+                        Flow = Flows.Custom,
+                        CustomGrantTypeRestrictions = new List<string>
+                        {
+                            "custom_grant"
+                        }
+
                     },
-                },
-                new Client
-                {
-                    ClientName = "Code Client with Scope Restrictions",
-                    Enabled = true,
-                    ClientId = "codeclient_restricted",
-                    ClientSecrets = new List<Secret>
+                    new Client
                     {
-                        new Secret("secret".Sha256())
+                        ClientName = "Disabled Client",
+                        Enabled = false,
+                        ClientId = "disabled",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("invalid".Sha256())
+                        },
+
+                        Flow = Flows.Custom,
                     },
-
-                    Flow = Flows.AuthorizationCode,
-                    RequireConsent = false,
-
-                    AllowedScopes = new List<string>
+                    new Client
                     {
-                        "openid"
-                    },
+                        ClientName = "Reference Token Client",
 
-                    RedirectUris = new List<string>
-                    {
-                        "https://server/cb",
-                    },
-                },
-                new Client
-                {
-                    ClientName = "Client Credentials Client",
-                    Enabled = true,
-                    ClientId = "client",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
+                        Enabled = true,
+                        ClientId = "referencetokenclient",
+                        ClientSecrets = new List<ClientSecret>
+                        { 
+                            new ClientSecret("secret".Sha256())
+                        },
 
-                    Flow = Flows.ClientCredentials,
-                    AllowAccessToAllScopes = true,
+                        Flow = Flows.Implicit,
 
-                    AccessTokenType = AccessTokenType.Jwt
-                },
-                new Client
-                {
-                    ClientName = "Client Credentials Client (restricted)",
-                    Enabled = true,
-                    ClientId = "client_restricted",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ClientCredentials,
-
-                    AllowedScopes = new List<string>
-                    {
-                        "resource"
-                    },
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client",
-                    Enabled = true,
-                    ClientId = "roclient",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-                    AllowAccessToAllScopes = true,
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client",
-                    Enabled = true,
-                    ClientId = "roclient_absolute_refresh_expiration_one_time_only",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-                    AllowAccessToAllScopes = true,
-
-                    RefreshTokenExpiration = TokenExpiration.Absolute,
-                    RefreshTokenUsage = TokenUsage.OneTimeOnly,
-                    AbsoluteRefreshTokenLifetime = 200
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client",
-                    Enabled = true,
-                    ClientId = "roclient_absolute_refresh_expiration_reuse",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-                    AllowAccessToAllScopes = true,
-
-                    RefreshTokenExpiration = TokenExpiration.Absolute,
-                    RefreshTokenUsage = TokenUsage.ReUse,
-                    AbsoluteRefreshTokenLifetime = 200
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client",
-                    Enabled = true,
-                    ClientId = "roclient_sliding_refresh_expiration_one_time_only",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-                    AllowAccessToAllScopes = true,
-
-                    RefreshTokenExpiration = TokenExpiration.Sliding,
-                    RefreshTokenUsage = TokenUsage.OneTimeOnly,
-                    AbsoluteRefreshTokenLifetime = 10,
-                    SlidingRefreshTokenLifetime = 4
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client",
-                    Enabled = true,
-                    ClientId = "roclient_sliding_refresh_expiration_reuse",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-                    AllowAccessToAllScopes = true,
-
-                    RefreshTokenExpiration = TokenExpiration.Sliding,
-                    RefreshTokenUsage = TokenUsage.ReUse,
-                    AbsoluteRefreshTokenLifetime = 200,
-                    SlidingRefreshTokenLifetime = 100
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client (restricted)",
-                    Enabled = true,
-                    ClientId = "roclient_restricted",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-
-                    AllowedScopes = new List<string>
-                    {
-                        "resource"
-                    },
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client (restricted with refresh)",
-                    Enabled = true,
-                    ClientId = "roclient_restricted_refresh",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-
-                    AllowedScopes = new List<string>
-                    {
-                        "resource",
-                        "offline_access"
-                    },
-                },
-                new Client
-                {
-                    ClientName = "Resource Owner Client (offline only)",
-                    Enabled = true,
-                    ClientId = "roclient_offline_only",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.ResourceOwner,
-
-                    AllowedScopes = new List<string>
-                    {
-                        "offline_access"
-                    },
-                },
-                new Client
-                {
-                    ClientName = "Custom Grant Client",
-                    Enabled = true,
-                    ClientId = "customgrantclient",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.Custom,
-                    AllowAccessToAllScopes = true,
-
-                    AllowedCustomGrantTypes = new List<string>
-                    {
-                        "custom_grant"
+                        AccessTokenType = AccessTokenType.Reference
                     }
-
-                },
-                new Client
-                {
-                    ClientName = "Disabled Client",
-                    Enabled = false,
-                    ClientId = "disabled",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("invalid".Sha256())
-                    },
-
-                    Flow = Flows.Custom,
-                    AllowAccessToAllScopes = true,
-                },
-                new Client
-                {
-                    ClientName = "Reference Token Client",
-
-                    Enabled = true,
-                    ClientId = "referencetokenclient",
-                    ClientSecrets = new List<Secret>
-                    {
-                        new Secret("secret".Sha256())
-                    },
-
-                    Flow = Flows.Implicit,
-                    AllowAccessTokensViaBrowser = true,
-                    AllowAccessToAllScopes = true,
-
-                    AccessTokenType = AccessTokenType.Reference
-                }
             };
         }
     }

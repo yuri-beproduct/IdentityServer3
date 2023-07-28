@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.ViewModels
+namespace Thinktecture.IdentityServer.Core.ViewModels
 {
     /// <summary>
     /// Models data submitted to revoke a subject's permissions to a client 

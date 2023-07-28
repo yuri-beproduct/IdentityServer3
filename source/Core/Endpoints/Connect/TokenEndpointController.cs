@@ -14,25 +14,30 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.ResponseHandling;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.ResponseHandling;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
     /// <summary>
     /// OAuth2/OpenID Conect token endpoint
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [RoutePrefix(Constants.RoutePaths.Oidc.Token)]
     [NoCache]
     [PreventUnsupportedRequestMediaTypes(allowFormUrlEncoded: true)]
     internal class TokenEndpointController : ApiController
@@ -41,7 +46,7 @@ namespace IdentityServer3.Core.Endpoints
 
         private readonly TokenResponseGenerator _generator;
         private readonly TokenRequestValidator _requestValidator;
-        private readonly ClientSecretValidator _clientValidator;
+        private readonly ClientValidator _clientValidator;
         private readonly IdentityServerOptions _options;
         private readonly IEventService _events;
 
@@ -53,7 +58,7 @@ namespace IdentityServer3.Core.Endpoints
         /// <param name="clientValidator">The client validator.</param>
         /// <param name="generator">The generator.</param>
         /// <param name="events">The events service.</param>
-        public TokenEndpointController(IdentityServerOptions options, TokenRequestValidator requestValidator, ClientSecretValidator clientValidator, TokenResponseGenerator generator, IEventService events)
+        public TokenEndpointController(IdentityServerOptions options, TokenRequestValidator requestValidator, ClientValidator clientValidator, TokenResponseGenerator generator, IEventService events)
         {
             _requestValidator = requestValidator;
             _clientValidator = clientValidator;
@@ -66,21 +71,30 @@ namespace IdentityServer3.Core.Endpoints
         /// POST
         /// </summary>
         /// <returns>Token response</returns>
-        [HttpPost]
+        [Route]
         public async Task<IHttpActionResult> Post()
         {
             Logger.Info("Start token request");
 
-            var response = await ProcessAsync(await Request.GetOwinContext().ReadRequestFormAsNameValueCollectionAsync());
-            
+            if (!_options.Endpoints.EnableTokenEndpoint)
+            {
+                var error = "Endpoint is disabled. Aborting";
+                Logger.Warn(error);
+                RaiseFailureEvent(error);
+
+                return NotFound();
+            }
+
+            var response = await ProcessAsync(await Request.Content.ReadAsFormDataAsync());
+
             if (response is TokenErrorResult)
             {
                 var details = response as TokenErrorResult;
-                await RaiseFailureEventAsync(details.Error);
+                RaiseFailureEvent(details.Error);
             }
             else
             {
-                await _events.RaiseSuccessfulEndpointEventAsync(EventConstants.EndpointNames.Token);
+                _events.RaiseSuccessfulEndpointEvent(EventConstants.EndpointNames.Token);
             }
 
             Logger.Info("End token request");
@@ -95,18 +109,18 @@ namespace IdentityServer3.Core.Endpoints
         public async Task<IHttpActionResult> ProcessAsync(NameValueCollection parameters)
         {
             // validate client credentials and client
-            var clientResult = await _clientValidator.ValidateAsync();
-            if (clientResult.IsError)
+            var client = await _clientValidator.ValidateClientAsync(parameters, Request.Headers.Authorization);
+            if (client == null)
             {
                 return this.TokenErrorResponse(Constants.TokenErrors.InvalidClient);
             }
 
             // validate the token request
-            var requestResult = await _requestValidator.ValidateRequestAsync(parameters, clientResult.Client);
+            var result = await _requestValidator.ValidateRequestAsync(parameters, client);
 
-            if (requestResult.IsError)
+            if (result.IsError)
             {
-                return this.TokenErrorResponse(requestResult.Error, requestResult.ErrorDescription);
+                return this.TokenErrorResponse(result.Error);
             }
 
             // return response
@@ -114,9 +128,9 @@ namespace IdentityServer3.Core.Endpoints
             return this.TokenResponse(response);
         }
 
-        private async Task RaiseFailureEventAsync(string error)
+        private void RaiseFailureEvent(string error)
         {
-            await _events.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.Token, error);
+            _events.RaiseFailureEndpointEvent(EventConstants.EndpointNames.Token, error);
         }
     }
 }

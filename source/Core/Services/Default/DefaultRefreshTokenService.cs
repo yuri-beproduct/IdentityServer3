@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Default refresh token service
@@ -31,7 +30,7 @@ namespace IdentityServer3.Core.Services.Default
         /// <summary>
         /// The logger
         /// </summary>
-        private readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
+        protected readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
 
         /// <summary>
         /// The refresh token store
@@ -57,13 +56,12 @@ namespace IdentityServer3.Core.Services.Default
         /// <summary>
         /// Creates the refresh token.
         /// </summary>
-        /// <param name="subject">The subject.</param>
         /// <param name="accessToken">The access token.</param>
         /// <param name="client">The client.</param>
         /// <returns>
         /// The refresh token handle
         /// </returns>
-        public virtual async Task<string> CreateRefreshTokenAsync(ClaimsPrincipal subject, Token accessToken, Client client)
+        public virtual async Task<string> CreateRefreshTokenAsync(Token accessToken, Client client)
         {
             Logger.Debug("Creating refresh token");
 
@@ -84,13 +82,12 @@ namespace IdentityServer3.Core.Services.Default
             {
                 CreationTime = DateTimeOffsetHelper.UtcNow,
                 LifeTime = lifetime,
-                AccessToken = accessToken,
-                Subject = subject
+                AccessToken = accessToken
             };
 
             await _store.StoreAsync(handle, refreshToken);
 
-            await RaiseRefreshTokenIssuedEventAsync(handle, refreshToken);
+            RaiseRefreshTokenIssuedEvent(handle, refreshToken);
             return handle;
         }
 
@@ -108,7 +105,6 @@ namespace IdentityServer3.Core.Services.Default
             Logger.Debug("Updating refresh token");
 
             bool needsUpdate = false;
-            string newHandle = handle;
 
             if (client.RefreshTokenUsage == TokenUsage.OneTimeOnly)
             {
@@ -118,7 +114,7 @@ namespace IdentityServer3.Core.Services.Default
                 await _store.RemoveAsync(handle);
 
                 // create new one
-                newHandle = CryptoRandom.CreateUniqueId();
+                handle = CryptoRandom.CreateUniqueId();
                 needsUpdate = true;
             }
 
@@ -146,7 +142,7 @@ namespace IdentityServer3.Core.Services.Default
 
             if (needsUpdate)
             {
-                await _store.StoreAsync(newHandle, refreshToken);
+                await _store.StoreAsync(handle, refreshToken);
                 Logger.Debug("Updated refresh token in store");
             }
             else
@@ -154,9 +150,9 @@ namespace IdentityServer3.Core.Services.Default
                 Logger.Debug("No updates to refresh token done");
             }
 
-            await RaiseRefreshTokenRefreshedEventAsync(handle, newHandle, refreshToken);
+            RaiseRefreshTokenRefreshedEvent(handle, handle, refreshToken);
 
-            return newHandle;
+            return handle;
         }
 
         /// <summary>
@@ -164,9 +160,9 @@ namespace IdentityServer3.Core.Services.Default
         /// </summary>
         /// <param name="handle">The handle.</param>
         /// <param name="token">The token.</param>
-        protected async Task RaiseRefreshTokenIssuedEventAsync(string handle, RefreshToken token)
+        protected void RaiseRefreshTokenIssuedEvent(string handle, RefreshToken token)
         {
-            await _events.RaiseRefreshTokenIssuedEventAsync(handle, token);
+            _events.RaiseRefreshTokenIssuedEvent(handle, token);
         }
 
         /// <summary>
@@ -175,9 +171,9 @@ namespace IdentityServer3.Core.Services.Default
         /// <param name="oldHandle">The old handle.</param>
         /// <param name="newHandle">The new handle.</param>
         /// <param name="token">The token.</param>
-        protected async Task RaiseRefreshTokenRefreshedEventAsync(string oldHandle, string newHandle, RefreshToken token)
+        protected void RaiseRefreshTokenRefreshedEvent(string oldHandle, string newHandle, RefreshToken token)
         {
-            await _events.RaiseSuccessfulRefreshTokenRefreshEventAsync(oldHandle, newHandle, token);
+            _events.RaiseSuccessfulRefreshTokenRefreshEvent(oldHandle, newHandle, token);
         }
     }
 }

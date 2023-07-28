@@ -17,7 +17,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Represents contextual information about a login request.

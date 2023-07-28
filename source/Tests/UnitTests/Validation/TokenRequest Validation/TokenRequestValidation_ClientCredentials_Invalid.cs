@@ -15,15 +15,15 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Services;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Services;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation.TokenRequest
+namespace Thinktecture.IdentityServer.Tests.Validation.TokenRequest
 {
-
+    
     public class TokenRequestValidation_ClientCredentials_Invalid
     {
         const string Category = "TokenRequest Validation - ClientCredentials - Invalid";

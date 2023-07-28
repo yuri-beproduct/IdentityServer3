@@ -15,17 +15,17 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.InMemory;
-using IdentityServer3.Core.Validation;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.Validation;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
-
+    
     public class ScopeValidation
     {
         const string Category = "Scope Validation";
@@ -62,15 +62,14 @@ namespace IdentityServer3.Tests.Validation
 
         Client _unrestrictedClient = new Client
             {
-                ClientId = "unrestricted",
-                AllowAccessToAllScopes = true
+                ClientId = "unrestricted"
             };
 
         Client _restrictedClient = new Client
             {
                 ClientId = "restricted",
             
-                AllowedScopes = new List<string>
+                ScopeRestrictions = new List<string>
                 {
                     "openid",
                     "resource1",

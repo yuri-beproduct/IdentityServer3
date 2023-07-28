@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
 using Microsoft.Owin;
 using Newtonsoft.Json;
 using System;
@@ -25,10 +21,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Security.Cryptography;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class MessageCookie<TMessage>
@@ -58,7 +58,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
         {
             if (ctx == null) throw new ArgumentNullException("ctx");
             if (options == null) throw new ArgumentNullException("options");
-            
+
             this.ctx = ctx;
             this.options = options;
         }
@@ -85,12 +85,12 @@ namespace IdentityServer3.Core.Configuration.Hosting
 
         string GetCookieName(string id = null)
         {
-            return String.Format("{0}{1}.{2}", 
-                options.AuthenticationOptions.CookieOptions.Prefix, 
-                MessageType, 
+            return String.Format("{0}{1}.{2}",
+                options.AuthenticationOptions.CookieOptions.Prefix,
+                MessageType,
                 id);
         }
-        
+
         string CookiePath
         {
             get
@@ -121,7 +121,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
         private TMessage Unprotect(string data)
         {
             if (data == null) throw new ArgumentNullException("data");
-            
+
             return Unprotect(data, options.DataProtector);
         }
 
@@ -129,9 +129,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
         {
             get
             {
-                return
-                    options.AuthenticationOptions.CookieOptions.SecureMode == CookieSecureMode.Always || 
-                    ctx.Request.Scheme == Uri.UriSchemeHttps;
+                return ctx.Request.Scheme == Uri.UriSchemeHttps;
             }
         }
 
@@ -145,7 +143,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
             var name = GetCookieName(id);
             var data = Protect(message);
 
-            ctx.Response.Cookies.Append(
+            ctx.Response.AppendCookie(
                 name,
                 data,
                 new Microsoft.Owin.CookieOptions
@@ -170,15 +168,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
             var data = ctx.Request.Cookies[name];
             if (!String.IsNullOrWhiteSpace(data))
             {
-                try
-                {
-                    return Unprotect(data);
-                }
-                catch(Exception ex)
-                {
-                    Logger.WarnException("Error unprotecting cookie: {0}", ex, name);
-                    ClearByCookieName(name);
-                }
+                return Unprotect(data);
             }
             return null;
         }
@@ -191,7 +181,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
 
         void ClearByCookieName(string name)
         {
-            ctx.Response.Cookies.Append(
+            ctx.Response.AppendCookie(
                 name,
                 ".",
                 new Microsoft.Owin.CookieOptions
@@ -204,7 +194,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
         }
 
         private long GetCookieRank(string name)
-        {   
+        {
             // empty and invalid cookies are considered to be the oldest:
             var rank = DateTimeOffset.MinValue.Ticks;
 
@@ -217,11 +207,11 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 }
             }
             catch (CryptographicException e)
-            {   
+            {
                 // cookie was protected with a different key/algorithm
                 Logger.DebugFormat("Unable to decrypt cookie {0}: {1}", name, e.Message);
             }
-            
+
             return rank;
         }
 
@@ -230,15 +220,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
             var names = GetCookieNames();
             var toKeep = options.AuthenticationOptions.SignInMessageThreshold;
 
-            if (names.Count() >= (toKeep * 2))
-            {
-                // we have way too many -- delete them all
-                foreach (var name in names)
-                {
-                    ClearByCookieName(name);
-                }
-            }
-            else if (names.Count() >= toKeep)
+            if (names.Count() >= toKeep)
             {
                 var rankedCookieNames =
                     from name in names

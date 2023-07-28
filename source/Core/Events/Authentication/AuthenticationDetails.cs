@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Events
+
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Event details for authentication events

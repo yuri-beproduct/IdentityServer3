@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Services;
 using Microsoft.Owin;
 using Microsoft.Owin.Cors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal class CorsPolicyProvider : ICorsPolicyProvider
     {
@@ -46,9 +46,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
 
             // see if the Origin is different than this server's origin. if so
             // that indicates a proper CORS request
-            var ctx = new OwinContext(request.Environment);
-            // using GetIdentityServerHost takes into account a configured PublicOrigin
-            var thisOrigin = ctx.GetIdentityServerHost();
+            var thisOrigin = request.Uri.Scheme + "://" + request.Uri.Authority;
             if (origin != null && origin != thisOrigin)
             {
                 if (IsPathAllowed(request))
@@ -67,7 +65,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 }
                 else
                 {
-                    Logger.InfoFormat("CORS request made for path: {0} from origin: {1} but rejected because invalid CORS path", path, origin);
+                    Logger.WarnFormat("CORS request made for path: {0} from origin: {1} but rejected because invalid CORS path", path, origin);
                 }
             }
 

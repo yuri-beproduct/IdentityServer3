@@ -17,7 +17,7 @@
 using System.Collections.Generic;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Models a mechanism for claims transformation for claims provided from external identity providers.

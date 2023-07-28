@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
 using Microsoft.Owin;
 using System;
 using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Text;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
 
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class LastUserNameCookie
@@ -42,7 +42,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
         {
             if (ctx == null) throw new ArgumentNullException("ctx");
             if (options == null) throw new ArgumentNullException("options");
-            
+
             this.ctx = ctx;
             this.options = options;
         }
@@ -61,7 +61,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                     {
                         bytes = options.DataProtector.Unprotect(bytes, cookieName);
                     }
-                    catch(CryptographicException)
+                    catch (CryptographicException)
                     {
                         SetValue(null);
                         return null;
@@ -83,9 +83,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
             if (options.AuthenticationOptions.RememberLastUsername)
             {
                 var cookieName = options.AuthenticationOptions.CookieOptions.Prefix + LastUsernameCookieName;
-                var secure =
-                    options.AuthenticationOptions.CookieOptions.SecureMode == CookieSecureMode.Always ||
-                    ctx.Request.Scheme == Uri.UriSchemeHttps;
+                var secure = ctx.Request.Scheme == Uri.UriSchemeHttps;
                 var path = ctx.Request.Environment.GetIdentityServerBasePath().CleanUrlPath();
 
                 var cookieOptions = new Microsoft.Owin.CookieOptions
@@ -108,7 +106,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                     cookieOptions.Expires = DateTimeHelper.UtcNow.AddYears(-1);
                 }
 
-                ctx.Response.Cookies.Append(cookieName, username, cookieOptions);
+                ctx.Response.AppendCookie(cookieName, username, cookieOptions);
             }
         }
     }

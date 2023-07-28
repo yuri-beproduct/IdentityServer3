@@ -14,38 +14,43 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
     /// <summary>
     /// Implementation of RFC 7009 (http://tools.ietf.org/html/rfc7009)
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [RoutePrefix(Constants.RoutePaths.Oidc.Revocation)]
     [NoCache]
     internal class RevocationEndpointController : ApiController
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         
         private readonly IEventService _events;
-        private readonly ClientSecretValidator _clientValidator;
+        private readonly ClientValidator _clientValidator;
         private readonly IdentityServerOptions _options;
         private readonly TokenRevocationRequestValidator _requestValidator;
         private readonly ITokenHandleStore _tokenHandles;
         private readonly IRefreshTokenStore _refreshTokens;
 
-        public RevocationEndpointController(IdentityServerOptions options, ClientSecretValidator clientValidator, TokenRevocationRequestValidator requestValidator, ITokenHandleStore tokenHandles, IRefreshTokenStore refreshTokens, IEventService events)
+        public RevocationEndpointController(IdentityServerOptions options, ClientValidator clientValidator, TokenRevocationRequestValidator requestValidator, ITokenHandleStore tokenHandles, IRefreshTokenStore refreshTokens, IEventService events)
         {
             _options = options;
             _clientValidator = clientValidator;
@@ -55,61 +60,70 @@ namespace IdentityServer3.Core.Endpoints
             _events = events;
         }
 
+        [Route]
         [HttpPost]
         public async Task<IHttpActionResult> Post()
         {
             Logger.Info("Start token revocation request");
 
-            // validate client credentials and client
-            var clientResult = await _clientValidator.ValidateAsync();
-            if (clientResult.Client == null)
+            if (!_options.Endpoints.EnableTokenRevocationEndpoint)
             {
-                return new RevocationErrorResult(Constants.TokenErrors.InvalidClient);
+                var error = "Endpoint is disabled. Aborting";
+                Logger.Warn(error);
+                RaiseFailureEvent(error);
+
+                return NotFound();
             }
 
-            var form = await Request.GetOwinContext().ReadRequestFormAsNameValueCollectionAsync();
-            var response = await ProcessAsync(clientResult.Client, form);
+            var response = await ProcessAsync(await Request.Content.ReadAsFormDataAsync());
 
             if (response is RevocationErrorResult)
             {
                 var details = response as RevocationErrorResult;
-                await RaiseFailureEventAsync(details.Error);
+                RaiseFailureEvent(details.Error);
             }
             else
             {
-                await _events.RaiseSuccessfulEndpointEventAsync(EventConstants.EndpointNames.Revocation);
+                _events.RaiseSuccessfulEndpointEvent(EventConstants.EndpointNames.Token);
             }
 
             Logger.Info("End token revocation request");
             return response;
         }
 
-        public async Task<IHttpActionResult> ProcessAsync(Client client, NameValueCollection parameters)
+        public async Task<IHttpActionResult> ProcessAsync(NameValueCollection parameters)
         {
-            // validate the token request
-            var requestResult = await _requestValidator.ValidateRequestAsync(parameters, client);
-
-            if (requestResult.IsError)
+            // validate client credentials and client
+            var client = await _clientValidator.ValidateClientAsync(parameters, Request.Headers.Authorization);
+            if (client == null)
             {
-                return new RevocationErrorResult(requestResult.Error);
+                return new RevocationErrorResult(Constants.TokenErrors.InvalidClient);
+            }
+
+            // validate the token request
+            var result = await _requestValidator.ValidateRequestAsync(parameters, client);
+
+            if (result.IsError)
+            {
+                return new RevocationErrorResult(result.Error);
             }
 
             // revoke tokens
-            if (requestResult.TokenTypeHint == Constants.TokenTypeHints.AccessToken)
+            if (result.TokenTypeHint == Constants.TokenTypeHints.AccessToken)
             {
-                await RevokeAccessTokenAsync(requestResult.Token, client);
+                await RevokeAccessTokenAsync(result.Token, client);
             }
-            else if (requestResult.TokenTypeHint == Constants.TokenTypeHints.RefreshToken)
+            else if (result.TokenTypeHint == Constants.TokenTypeHints.RefreshToken)
             {
-                await RevokeRefreshTokenAsync(requestResult.Token, client);
+                await RevokeRefreshTokenAsync(result.Token, client);
             }
             else
             {
-                var found = await RevokeAccessTokenAsync(requestResult.Token, client);
+                var found = await RevokeAccessTokenAsync(result.Token, client);
 
                 if (!found)
                 {
-                    await RevokeRefreshTokenAsync(requestResult.Token, client);
+                    await RevokeRefreshTokenAsync(result.Token, client);
                 }
             }
 
@@ -120,20 +134,19 @@ namespace IdentityServer3.Core.Endpoints
         private async Task<bool> RevokeAccessTokenAsync(string handle, Client client)
         {
             var token = await _tokenHandles.GetAsync(handle);
-            
+
             if (token != null)
             {
                 if (token.ClientId == client.ClientId)
                 {
                     await _tokenHandles.RemoveAsync(handle);
-                    await _events.RaiseTokenRevokedEventAsync(token.SubjectId, handle, Constants.TokenTypeHints.AccessToken);
                 }
                 else
                 {
                     var message = string.Format("Client {0} tried to revoke an access token belonging to a different client: {1}", client.ClientId, token.ClientId);
 
                     Logger.Warn(message);
-                    await RaiseFailureEventAsync(message);
+                    RaiseFailureEvent(message);
                 }
 
                 return true;
@@ -151,16 +164,14 @@ namespace IdentityServer3.Core.Endpoints
             {
                 if (token.ClientId == client.ClientId)
                 {
-                    await _refreshTokens.RevokeAsync(token.SubjectId, token.ClientId);
-                    await _tokenHandles.RevokeAsync(token.SubjectId, token.ClientId);
-                    await _events.RaiseTokenRevokedEventAsync(token.SubjectId, handle, Constants.TokenTypeHints.RefreshToken);
+                    await _refreshTokens.RemoveAsync(handle);
                 }
                 else
                 {
                     var message = string.Format("Client {0} tried to revoke a refresh token belonging to a different client: {1}", client.ClientId, token.ClientId);
                     
                     Logger.Warn(message);
-                    await RaiseFailureEventAsync(message);
+                    RaiseFailureEvent(message);
                 }
 
                 return true;
@@ -169,9 +180,9 @@ namespace IdentityServer3.Core.Endpoints
             return false;
         }
 
-        private async Task RaiseFailureEventAsync(string error)
+        private void RaiseFailureEvent(string error)
         {
-            await _events.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.Revocation, error);
+            _events.RaiseFailureEndpointEvent(EventConstants.EndpointNames.Revocation, error);
         }
     }
 }

@@ -1,6 +1,4 @@
-﻿using IdentityServer3.Core;
-using IdentityServer3.Core.Services.InMemory;
-/*
+﻿/*
  * Copyright 2014, 2015 Dominick Baier, Brock Allen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +15,10 @@ using IdentityServer3.Core.Services.InMemory;
  */
 using System;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
 
-namespace IdentityServer3.Tests.Conformance
+namespace Thinktecture.IdentityServer.Tests.Conformance
 {
     public class IdentityServerHostTest : IDisposable
     {

@@ -15,21 +15,19 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Validation;
 using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Validation;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation.AuthorizeRequest
+namespace Thinktecture.IdentityServer.Tests.Validation.AuthorizeRequest
 {
     public class Authorize_ProtocolValidation_Invalid
     {
-        public const string Category = "AuthorizeRequest Protocol Validation";
-
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public void Null_Parameter()
         {
             var validator = Factory.CreateAuthorizeRequestValidator();
@@ -40,7 +38,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Empty_Parameters()
         {
             var validator = Factory.CreateAuthorizeRequestValidator();
@@ -53,7 +51,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
 
         // fails because openid scope is requested, but no response type that indicates an identity token
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task OpenId_Token_Only_Request()
         {
             var parameters = new NameValueCollection();
@@ -71,7 +69,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Resource_Only_IdToken_Request()
         {
             var parameters = new NameValueCollection();
@@ -90,7 +88,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Mixed_Token_Only_Request()
         {
             var parameters = new NameValueCollection();
@@ -108,7 +106,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task OpenId_IdToken_Request_Nonce_Missing()
         {
             var parameters = new NameValueCollection();
@@ -126,7 +124,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Missing_ClientId()
         {
             var parameters = new NameValueCollection();
@@ -143,7 +141,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Missing_Scope()
         {
             var parameters = new NameValueCollection();
@@ -160,7 +158,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Missing_RedirectUri()
         {
             var parameters = new NameValueCollection();
@@ -177,7 +175,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Malformed_RedirectUri()
         {
             var parameters = new NameValueCollection();
@@ -195,7 +193,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Malformed_RedirectUri_Triple_Slash()
         {
             var parameters = new NameValueCollection();
@@ -213,7 +211,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Missing_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -230,7 +228,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Unknown_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -248,7 +246,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_Code_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -267,7 +265,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_IdToken_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -286,7 +284,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_IdTokenToken_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -305,26 +303,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task Invalid_ResponseMode_For_TokenIdToken_ResponseType()
-        {
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.AuthorizeRequest.ClientId, "implicitclient");
-            parameters.Add(Constants.AuthorizeRequest.Scope, "openid");
-            parameters.Add(Constants.AuthorizeRequest.RedirectUri, "oob://implicit/cb");
-            parameters.Add(Constants.AuthorizeRequest.ResponseType, "token id_token"); // Unconventional order
-            parameters.Add(Constants.AuthorizeRequest.ResponseMode, Constants.ResponseModes.Query);
-
-            var validator = Factory.CreateAuthorizeRequestValidator();
-            var result = await validator.ValidateAsync(parameters);
-
-            result.IsError.Should().BeTrue();
-            result.ErrorType.Should().Be(ErrorTypes.User);
-            result.Error.Should().Be(Constants.AuthorizeErrors.UnsupportedResponseType);
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_CodeToken_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -343,7 +322,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_CodeIdToken_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -362,7 +341,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Invalid_ResponseMode_For_CodeIdTokenToken_ResponseType()
         {
             var parameters = new NameValueCollection();
@@ -381,26 +360,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
-        public async Task Invalid_ResponseMode_For_IdTokenCodeToken_ResponseType()
-        {
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.AuthorizeRequest.ClientId, "hybridclient");
-            parameters.Add(Constants.AuthorizeRequest.Scope, "openid");
-            parameters.Add(Constants.AuthorizeRequest.RedirectUri, "https://server/cb");
-            parameters.Add(Constants.AuthorizeRequest.ResponseType, "id_token code token"); // Unconventional ordering
-            parameters.Add(Constants.AuthorizeRequest.ResponseMode, Constants.ResponseModes.Query);
-
-            var validator = Factory.CreateAuthorizeRequestValidator();
-            var result = await validator.ValidateAsync(parameters);
-
-            result.IsError.Should().BeTrue();
-            result.ErrorType.Should().Be(ErrorTypes.User);
-            result.Error.Should().Be(Constants.AuthorizeErrors.UnsupportedResponseType);
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Malformed_MaxAge()
         {
             var parameters = new NameValueCollection();
@@ -419,7 +379,7 @@ namespace IdentityServer3.Tests.Validation.AuthorizeRequest
         }
 
         [Fact]
-        [Trait("Category", Category)]
+        [Trait("Category", "AuthorizeRequest Protocol Validation")]
         public async Task Negative_MaxAge()
         {
             var parameters = new NameValueCollection();

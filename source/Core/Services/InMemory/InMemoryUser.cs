@@ -17,7 +17,7 @@
 using System.Collections.Generic;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Services.InMemory
+namespace Thinktecture.IdentityServer.Core.Services.InMemory
 {
     /// <summary>
     /// In-memory user

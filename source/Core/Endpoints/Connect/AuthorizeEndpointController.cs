@@ -14,29 +14,33 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.ResponseHandling;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
-using IdentityServer3.Core.ViewModels;
 using System;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.ResponseHandling;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
     /// <summary>
     /// OAuth2/OpenID Connect authorize endpoint
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     [ErrorPageFilter]
     [HostAuthentication(Constants.PrimaryAuthenticationType)]
     [SecurityHeaders]
@@ -54,7 +58,6 @@ namespace IdentityServer3.Core.Endpoints
         private readonly ILocalizationService _localizationService;
         private readonly IEventService _events;
         private readonly AntiForgeryToken _antiForgeryToken;
-        private readonly ClientListCookie _clientListCookie;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthorizeEndpointController" /> class.
@@ -67,7 +70,6 @@ namespace IdentityServer3.Core.Endpoints
         /// <param name="localizationService">The localization service.</param>
         /// <param name="events">The event service.</param>
         /// <param name="antiForgeryToken">The anti forgery token.</param>
-        /// <param name="clientListCookie">The client list cookie.</param>
         public AuthorizeEndpointController(
             IViewService viewService,
             AuthorizeRequestValidator validator,
@@ -76,8 +78,7 @@ namespace IdentityServer3.Core.Endpoints
             IdentityServerOptions options,
             ILocalizationService localizationService,
             IEventService events,
-            AntiForgeryToken antiForgeryToken,
-            ClientListCookie clientListCookie)
+            AntiForgeryToken antiForgeryToken)
         {
             _viewService = viewService;
             _options = options;
@@ -88,7 +89,6 @@ namespace IdentityServer3.Core.Endpoints
             _localizationService = localizationService;
             _events = events;
             _antiForgeryToken = antiForgeryToken;
-            _clientListCookie = clientListCookie;
         }
 
         /// <summary>
@@ -96,10 +96,19 @@ namespace IdentityServer3.Core.Endpoints
         /// </summary>
         /// <param name="request">The request.</param>
         /// <returns></returns>
-        [HttpGet]
+        [Route(Constants.RoutePaths.Oidc.Authorize, Name = Constants.RouteNames.Oidc.Authorize)]
         public async Task<IHttpActionResult> Get(HttpRequestMessage request)
         {
             Logger.Info("Start authorize request");
+
+            if (!_options.Endpoints.EnableAuthorizeEndpoint)
+            {
+                var error = "Endpoint is disabled. Aborting";
+                Logger.Warn(error);
+                RaiseFailureEvent(error);
+
+                return NotFound();
+            }
 
             var response = await ProcessRequestAsync(request.RequestUri.ParseQueryString());
 
@@ -114,10 +123,9 @@ namespace IdentityServer3.Core.Endpoints
             
             if (result.IsError)
             {
-                return await this.AuthorizeErrorAsync(
+                return this.AuthorizeError(
                     result.ErrorType,
                     result.Error,
-                    result.ErrorDescription,
                     result.ValidatedRequest);
             }
 
@@ -126,10 +134,9 @@ namespace IdentityServer3.Core.Endpoints
 
             if (loginInteraction.IsError)
             {
-                return await this.AuthorizeErrorAsync(
+                return this.AuthorizeError(
                     loginInteraction.Error.ErrorType,
                     loginInteraction.Error.Error,
-                    null,
                     request);
             }
             if (loginInteraction.IsLogin)
@@ -156,10 +163,9 @@ namespace IdentityServer3.Core.Endpoints
 
             if (consentInteraction.IsError)
             {
-                return await this.AuthorizeErrorAsync(
+                return this.AuthorizeError(
                     consentInteraction.Error.ErrorType,
                     consentInteraction.Error.Error,
-                    null,
                     request);
             }
 
@@ -172,6 +178,7 @@ namespace IdentityServer3.Core.Endpoints
             return await CreateAuthorizeResponseAsync(request);
         }
 
+        [Route(Constants.RoutePaths.Oidc.Consent, Name = Constants.RouteNames.Oidc.Consent)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public Task<IHttpActionResult> PostConsent(UserConsent model)
@@ -180,6 +187,7 @@ namespace IdentityServer3.Core.Endpoints
             return ProcessRequestAsync(Request.RequestUri.ParseQueryString(), model ?? new UserConsent());
         }
 
+        [Route(Constants.RoutePaths.Oidc.SwitchUser, Name = Constants.RouteNames.Oidc.SwitchUser)]
         [HttpGet]
         public async Task<IHttpActionResult> LoginAsDifferentUser()
         {
@@ -195,19 +203,13 @@ namespace IdentityServer3.Core.Endpoints
             if (request.ResponseMode == Constants.ResponseModes.Query ||
                 request.ResponseMode == Constants.ResponseModes.Fragment)
             {
-                Logger.DebugFormat("Adding client {0} to client list cookie for subject {1}", request.ClientId, request.Subject.GetSubjectId());
-                _clientListCookie.AddClient(request.ClientId);
-
-                await RaiseSuccessEventAsync();
+                RaiseSuccessEvent();
                 return new AuthorizeRedirectResult(response, _options);
             }
 
             if (request.ResponseMode == Constants.ResponseModes.FormPost)
             {
-                Logger.DebugFormat("Adding client {0} to client list cookie for subject {1}", request.ClientId, request.Subject.GetSubjectId());
-                _clientListCookie.AddClient(request.ClientId);
-
-                await RaiseSuccessEventAsync();
+                RaiseSuccessEvent();
                 return new AuthorizeFormPostResult(response, Request);
             }
 
@@ -249,7 +251,7 @@ namespace IdentityServer3.Core.Endpoints
                 AntiForgery = _antiForgeryToken.GetAntiForgeryToken()
             };
 
-            return new ConsentActionResult(_viewService, consentModel, validatedRequest);
+            return new ConsentActionResult(_viewService, consentModel);
         }
 
         IHttpActionResult RedirectToLogin(SignInMessage message, NameValueCollection parameters)
@@ -264,9 +266,9 @@ namespace IdentityServer3.Core.Endpoints
             return new LoginResult(Request.GetOwinContext().Environment, message);
         }
 
-        async Task<IHttpActionResult> AuthorizeErrorAsync(ErrorTypes errorType, string error, string errorDescription, ValidatedAuthorizeRequest request)
+        IHttpActionResult AuthorizeError(ErrorTypes errorType, string error, ValidatedAuthorizeRequest request)
         {
-            await RaiseFailureEventAsync(error);
+            RaiseFailureEvent(error);
 
             // show error message to user
             if (errorType == ErrorTypes.User)
@@ -293,7 +295,6 @@ namespace IdentityServer3.Core.Endpoints
 
                 IsError = true,
                 Error = error,
-                ErrorDescription = errorDescription,
                 State = request.State,
                 RedirectUri = request.RedirectUri
             };
@@ -308,14 +309,14 @@ namespace IdentityServer3.Core.Endpoints
             }
         }
 
-        private async Task RaiseSuccessEventAsync()
+        private void RaiseSuccessEvent()
         {
-            await _events.RaiseSuccessfulEndpointEventAsync(EventConstants.EndpointNames.Authorize);
+            _events.RaiseSuccessfulEndpointEvent(EventConstants.EndpointNames.Authorize);
         }
 
-        private async Task RaiseFailureEventAsync(string error)
+        private void RaiseFailureEvent(string error)
         {
-            await _events.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.Authorize, error);
+            _events.RaiseFailureEndpointEvent(EventConstants.EndpointNames.Authorize, error);
         }
 
         private string LookupErrorMessage(string error)

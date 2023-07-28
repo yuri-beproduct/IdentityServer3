@@ -14,29 +14,24 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
 using System.Collections.Generic;
 using System.Linq;
+using Thinktecture.IdentityServer.Core.Extensions;
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     internal static class IdentityServerOptionsExtensions
     {
-        internal static IEnumerable<string> RenderProtocolUrls(this IdentityServerOptions options, string baseUrl, string sid)
+        internal static IEnumerable<string> RenderProtocolUrls(this IdentityServerOptions options, string baseUrl)
         {
             baseUrl = baseUrl.EnsureTrailingSlash();
-
-            var urls = new List<string>()
+            
+            if (options.ProtocolLogoutUrls != null)
             {
-                baseUrl + Constants.RoutePaths.Oidc.EndSessionCallback + "?sid=" + sid
-            };
-
-            if (options.ProtocolLogoutUrls != null && options.ProtocolLogoutUrls.Any())
-            {
-                urls.AddRange(options.ProtocolLogoutUrls.Select(url => baseUrl + url.RemoveLeadingSlash()));
+                return options.ProtocolLogoutUrls.Select(url => baseUrl + url.RemoveLeadingSlash());
             }
 
-            return urls;
+            return Enumerable.Empty<string>();
         }
     }
 }

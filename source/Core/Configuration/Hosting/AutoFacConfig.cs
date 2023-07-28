@@ -16,19 +16,18 @@
 
 using Autofac;
 using Autofac.Integration.WebApi;
-using IdentityServer3.Core.Endpoints;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.ResponseHandling;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.Default;
-using IdentityServer3.Core.Services.InMemory;
-using IdentityServer3.Core.Validation;
 using Microsoft.Owin;
 using System;
-using System.Linq;
+using Thinktecture.IdentityServer.Core.Endpoints;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.ResponseHandling;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.Default;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal static class AutofacConfig
     {
@@ -57,66 +56,35 @@ namespace IdentityServer3.Core.Configuration.Hosting
             builder.RegisterDecoratorDefaultInstance<IAuthorizationCodeStore, KeyHashingAuthorizationCodeStore, InMemoryAuthorizationCodeStore>(fact.AuthorizationCodeStore);
             builder.RegisterDecoratorDefaultInstance<ITokenHandleStore, KeyHashingTokenHandleStore, InMemoryTokenHandleStore>(fact.TokenHandleStore);
             builder.RegisterDecoratorDefaultInstance<IRefreshTokenStore, KeyHashingRefreshTokenStore, InMemoryRefreshTokenStore>(fact.RefreshTokenStore);
-            
             builder.RegisterDefaultInstance<IConsentStore, InMemoryConsentStore>(fact.ConsentStore);
-            builder.RegisterDefaultInstance<ICorsPolicyService, DefaultCorsPolicyService>(fact.CorsPolicyService);
-
             builder.RegisterDefaultType<IClaimsProvider, DefaultClaimsProvider>(fact.ClaimsProvider);
             builder.RegisterDefaultType<ITokenService, DefaultTokenService>(fact.TokenService);
-            builder.RegisterDefaultType<IRefreshTokenService, DefaultRefreshTokenService>(fact.RefreshTokenService);            
+            builder.RegisterDefaultType<IRefreshTokenService, DefaultRefreshTokenService>(fact.RefreshTokenService);
+            builder.RegisterDefaultType<ITokenSigningService, DefaultTokenSigningService>(fact.TokenSigningService);
             builder.RegisterDefaultType<ICustomRequestValidator, DefaultCustomRequestValidator>(fact.CustomRequestValidator);
+            builder.RegisterDefaultType<ICustomGrantValidator, DefaultCustomGrantValidator>(fact.CustomGrantValidator);
             builder.RegisterDefaultType<IExternalClaimsFilter, NopClaimsFilter>(fact.ExternalClaimsFilter);
             builder.RegisterDefaultType<ICustomTokenValidator, DefaultCustomTokenValidator>(fact.CustomTokenValidator);
-            builder.RegisterDefaultType<ICustomTokenResponseGenerator, DefaultCustomTokenResponseGenerator>(fact.CustomTokenResponseGenerator);
             builder.RegisterDefaultType<IConsentService, DefaultConsentService>(fact.ConsentService);
-            builder.RegisterDefaultType<IAuthenticationSessionValidator, DefaultAuthenticationSessionValidator>(fact.AuthenticationSessionValidator);
-
-            // todo remove in next major version
-            if (fact.TokenSigningService != null)
-            {
-                builder.Register(fact.TokenSigningService);
-            }
-            else
-            {
-                builder.Register(new Registration<ITokenSigningService>(r => new DefaultTokenSigningService(r.Resolve<ISigningKeyService>())));
-            }
-
-            builder.RegisterDefaultType<ISigningKeyService, DefaultSigningKeyService>(fact.SigningKeyService);
+            
             builder.RegisterDecoratorDefaultType<IEventService, EventServiceDecorator, DefaultEventService>(fact.EventService);
 
             builder.RegisterDefaultType<IRedirectUriValidator, DefaultRedirectUriValidator>(fact.RedirectUriValidator);
             builder.RegisterDefaultType<ILocalizationService, DefaultLocalizationService>(fact.LocalizationService);
             builder.RegisterDefaultType<IClientPermissionsService, DefaultClientPermissionsService>(fact.ClientPermissionsService);
+            builder.RegisterDefaultType<IClientSecretValidator, HashedClientSecretValidator>(fact.ClientSecretValidator);
 
-            // register custom grant validators
-            builder.RegisterType<CustomGrantValidator>();
-            if (fact.CustomGrantValidators.Any())
-            {
-                foreach (var val in fact.CustomGrantValidators)
-                {
-                    builder.Register(val);
-                }
-            }
-
-            // register secret parsing/validation plumbing
-            builder.RegisterType<SecretValidator>();
-            builder.RegisterType<SecretParser>();
-
-            foreach (var parser in fact.SecretParsers)
-            {
-                builder.Register(parser);
-            }
-            foreach (var validator in fact.SecretValidators)
-            {
-                builder.Register(validator);
-            }
-
-            // register view service plumbing
             if (fact.ViewService == null)
             {
                 fact.ViewService = new DefaultViewServiceRegistration();
             }
             builder.Register(fact.ViewService);
+
+            if (fact.CorsPolicyService == null)
+            {
+                fact.CorsPolicyService = new Registration<ICorsPolicyService>(new DefaultCorsPolicyService(options.CorsPolicy ?? new CorsPolicy()));
+            }
+            builder.Register(fact.CorsPolicyService);
 
             // this is more of an internal interface, but maybe we want to open it up as pluggable?
             // this is used by the DefaultClientPermissionsService below, or it could be used
@@ -138,14 +106,12 @@ namespace IdentityServer3.Core.Configuration.Hosting
             // validators
             builder.RegisterType<TokenRequestValidator>();
             builder.RegisterType<AuthorizeRequestValidator>();
+            builder.RegisterType<ClientValidator>();
             builder.RegisterType<TokenValidator>();
             builder.RegisterType<EndSessionRequestValidator>();
             builder.RegisterType<BearerTokenUsageValidator>();
             builder.RegisterType<ScopeValidator>();
             builder.RegisterType<TokenRevocationRequestValidator>();
-            builder.RegisterType<IntrospectionRequestValidator>();
-            builder.RegisterType<ScopeSecretValidator>();
-            builder.RegisterType<ClientSecretValidator>();
 
             // processors
             builder.RegisterType<TokenResponseGenerator>();
@@ -153,7 +119,6 @@ namespace IdentityServer3.Core.Configuration.Hosting
             builder.RegisterType<AuthorizeInteractionResponseGenerator>();
             builder.RegisterType<UserInfoResponseGenerator>();
             builder.RegisterType<EndSessionResponseGenerator>();
-            builder.RegisterType<IntrospectionResponseGenerator>();
 
             // for authentication
             var authenticationOptions = options.AuthenticationOptions ?? new AuthenticationOptions();
@@ -169,10 +134,9 @@ namespace IdentityServer3.Core.Configuration.Hosting
             builder.Register(c => new MessageCookie<SignOutMessage>(c.Resolve<IOwinContext>(), c.Resolve<IdentityServerOptions>()));
             builder.Register(c => new LastUserNameCookie(c.Resolve<IOwinContext>(), c.Resolve<IdentityServerOptions>()));
             builder.Register(c => new AntiForgeryToken(c.Resolve<IOwinContext>(), c.Resolve<IdentityServerOptions>()));
-            builder.Register(c => new ClientListCookie(c.Resolve<IOwinContext>(), c.Resolve<IdentityServerOptions>()));
 
             // add any additional dependencies from hosting application
-            foreach (var registration in fact.Registrations)
+            foreach(var registration in fact.Registrations)
             {
                 builder.Register(registration, registration.Name);
             }
@@ -200,7 +164,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 }
             }
         }
-
+        
         private static void RegisterDefaultInstance<T, TDefault>(this ContainerBuilder builder, Registration<T> registration, string name = null)
             where T : class
             where TDefault : class, T, new()
@@ -233,7 +197,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 return ctx.Resolve<TDecorator>(inner);
             });
         }
-
+        
         private static void RegisterDecoratorDefaultInstance<T, TDecorator, TDefault>(this ContainerBuilder builder, Registration<T> registration)
             where T : class
             where TDecorator : T
@@ -242,7 +206,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
             builder.RegisterDefaultInstance<T, TDefault>(registration, DecoratorRegistrationName);
             builder.RegisterDecorator<T, TDecorator>(DecoratorRegistrationName);
         }
-
+        
         private static void RegisterDecoratorDefaultType<T, TDecorator, TDefault>(this ContainerBuilder builder, Registration<T> registration)
             where T : class
             where TDecorator : T
@@ -264,12 +228,12 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 return ctx.Resolve<TDecorator>(inner);
             });
         }
-
+        
         private static void Register(this ContainerBuilder builder, Registration registration, string name = null)
         {
             if (registration.Instance != null)
             {
-                var reg = builder.Register(ctx => registration.Instance).SingleInstance();
+                var reg = builder.Register(ctx=>registration.Instance).SingleInstance();
                 if (name != null)
                 {
                     reg.Named(name, registration.DependencyType);
@@ -301,7 +265,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                     reg.As(registration.DependencyType);
                 }
 
-                switch (registration.Mode)
+                switch(registration.Mode)
                 {
                     case RegistrationMode.InstancePerHttpRequest:
                         reg.InstancePerRequest(); break;
@@ -337,12 +301,12 @@ namespace IdentityServer3.Core.Configuration.Hosting
             }
             else
             {
-                var message = "No type or factory found on registration " + registration.GetType().FullName;
+                var message = "No type or factory found on registration " + registration.GetType().FullName; 
                 Logger.Error(message);
                 throw new InvalidOperationException(message);
             }
 
-            foreach (var item in registration.AdditionalRegistrations)
+            foreach(var item in registration.AdditionalRegistrations)
             {
                 builder.Register(item, item.Name);
             }

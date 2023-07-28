@@ -17,12 +17,12 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace IdentityServer3.Core.Logging
+namespace Thinktecture.IdentityServer.Core.Logging
 {
     /// <summary>
     /// Helper to JSON serialize object data for logging.
     /// </summary>
-    internal static class LogSerializer
+    public static class LogSerializer
     {
         static readonly JsonSerializerSettings jsonSettings = new JsonSerializerSettings
         {

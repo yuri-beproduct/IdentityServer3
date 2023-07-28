@@ -14,24 +14,28 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Resources;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
-using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Resources;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
     /// <summary>
     /// Endpoint for validating identity tokens
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [RoutePrefix(Constants.RoutePaths.Oidc.IdentityTokenValidation)]
     [NoCache]
     internal class IdentityTokenValidationController : ApiController
     {
@@ -53,36 +57,28 @@ namespace IdentityServer3.Core.Endpoints
         /// GET
         /// </summary>
         /// <returns>Claims if token is valid</returns>
-        [HttpGet]
+        [Route]
         public async Task<IHttpActionResult> Get()
         {
             Logger.Info("Start identity token validation request");
 
+            if (!_options.Endpoints.EnableIdentityTokenValidationEndpoint)
+            {
+                var error = "Endpoint is disabled. Aborting";
+                Logger.Warn(error);
+                RaiseFailureEvent(error);
+
+                return NotFound();
+            }
+
             var parameters = Request.RequestUri.ParseQueryString();
-            return await ProcessAsync(parameters);
-        }
 
-        /// <summary>
-        /// POST
-        /// </summary>
-        /// <returns>Claims if token is valid</returns>
-        [HttpPost]
-        public async Task<IHttpActionResult> Post()
-        {
-            Logger.Info("Start identity token validation request");
-
-            var parameters = await Request.GetOwinContext().ReadRequestFormAsNameValueCollectionAsync();
-            return await ProcessAsync(parameters);
-        }
-
-        internal async Task<IHttpActionResult> ProcessAsync(NameValueCollection parameters)
-        {
             var token = parameters.Get("token");
             if (token.IsMissing())
             {
                 var error = "token is missing.";
                 Logger.Error(error);
-                await RaiseFailureEventAsync(error);
+                RaiseFailureEvent(error);
 
                 return BadRequest(_localizationService.GetMessage(MessageIds.MissingToken));
             }
@@ -92,7 +88,7 @@ namespace IdentityServer3.Core.Endpoints
             {
                 var error = "client_id is missing.";
                 Logger.Error(error);
-                await RaiseFailureEventAsync(error);
+                RaiseFailureEvent(error);
 
                 return BadRequest(_localizationService.GetMessage(MessageIds.MissingClientId));
             }
@@ -102,7 +98,7 @@ namespace IdentityServer3.Core.Endpoints
             if (result.IsError)
             {
                 Logger.Info("Returning error: " + result.Error);
-                await RaiseFailureEventAsync(result.Error);
+                RaiseFailureEvent(result.Error);
 
                 return BadRequest(result.Error);
             }
@@ -110,19 +106,19 @@ namespace IdentityServer3.Core.Endpoints
             var response = result.Claims.ToClaimsDictionary();
 
             Logger.Info("End identity token validation request");
-            await RaiseSuccessEventAsync();
+            RaiseSuccessEvent();
 
             return Json(response);
         }
 
-        private async Task RaiseSuccessEventAsync()
+        private void RaiseSuccessEvent()
         {
-            await _events.RaiseSuccessfulEndpointEventAsync(EventConstants.EndpointNames.IdentityTokenValidation);
+            _events.RaiseSuccessfulEndpointEvent(EventConstants.EndpointNames.IdentityTokenValidation);
         }
 
-        private async Task RaiseFailureEventAsync(string error)
+        private void RaiseFailureEvent(string error)
         {
-            await _events.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.IdentityTokenValidation, error);
+            _events.RaiseFailureEndpointEvent(EventConstants.EndpointNames.IdentityTokenValidation, error);
         }
     }
 }

@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using Microsoft.Owin;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -28,13 +21,18 @@ using System.IdentityModel.Selectors;
 using System.IdentityModel.Tokens;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel.Security;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel.Extensions;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class TokenValidator
@@ -44,12 +42,9 @@ namespace IdentityServer3.Core.Validation
         private readonly ITokenHandleStore _tokenHandles;
         private readonly ICustomTokenValidator _customValidator;
         private readonly IClientStore _clients;
-        private readonly IOwinContext _context;
-        private readonly ISigningKeyService _keyService;
 
         private readonly TokenValidationLog _log;
 
-        // todo: remove in 3.0.0
         public TokenValidator(IdentityServerOptions options, IClientStore clients, ITokenHandleStore tokenHandles, ICustomTokenValidator customValidator)
         {
             _options = options;
@@ -60,41 +55,9 @@ namespace IdentityServer3.Core.Validation
             _log = new TokenValidationLog();
         }
 
-        public TokenValidator(IdentityServerOptions options, IClientStore clients, ITokenHandleStore tokenHandles, ICustomTokenValidator customValidator, OwinEnvironmentService owinEnvironment, ISigningKeyService keyService)
-        {
-            _options = options;
-            _clients = clients;
-            _tokenHandles = tokenHandles;
-            _customValidator = customValidator;
-            _context = new OwinContext(owinEnvironment.Environment);
-            _keyService = keyService;
-
-            _log = new TokenValidationLog();
-        }
-
-        // todo: remove in 3.0.0
-        private string IssuerUri
-        {
-            get
-            {
-                if (_context != null)
-                {
-                    return _context.GetIdentityServerIssuerUri();
-                }
-
-                return _options.DynamicallyCalculatedIssuerUri;
-            }
-        }
-
         public virtual async Task<TokenValidationResult> ValidateIdentityTokenAsync(string token, string clientId = null, bool validateLifetime = true)
         {
             Logger.Info("Start identity token validation");
-
-            if (token.Length > _options.InputLengthRestrictions.Jwt)
-            {
-                Logger.Error("JWT too long");
-                return Invalid(Constants.ProtectedResourceErrors.InvalidToken);
-            }
 
             if (clientId.IsMissing())
             {
@@ -113,15 +76,15 @@ namespace IdentityServer3.Core.Validation
             var client = await _clients.FindClientByIdAsync(clientId);
             if (client == null)
             {
-                LogError("Unknown or disabled client.");
+                LogError("Unknown or diabled client.");
                 return Invalid(Constants.ProtectedResourceErrors.InvalidToken);
             }
 
             _log.ClientName = client.ClientName;
-
-            var certs = await _keyService.GetPublicKeysAsync();
-            var result = await ValidateJwtAsync(token, clientId, certs, validateLifetime);
-
+            
+            var signingKey = new X509SecurityKey(_options.SigningCertificate);
+            var result = await ValidateJwtAsync(token, clientId, signingKey, validateLifetime);
+            
             result.Client = client;
 
             if (result.IsError)
@@ -130,17 +93,23 @@ namespace IdentityServer3.Core.Validation
                 return result;
             }
 
-            _log.Claims = result.Claims.ToClaimsDictionary();
+            if (_options.LoggingOptions.IncludeSensitiveDataInLogs)
+            {
+                _log.Claims = result.Claims.ToClaimsDictionary();
+            }
 
             var customResult = await _customValidator.ValidateIdentityTokenAsync(result);
 
             if (customResult.IsError)
             {
-                LogError("Custom validator failed: " + (customResult.Error ?? "unknown"));
+                LogError("Custom validator failed: " + customResult.Error ?? "unknown");
                 return customResult;
             }
 
-            _log.Claims = customResult.Claims.ToClaimsDictionary();
+            if (_options.LoggingOptions.IncludeSensitiveDataInLogs)
+            {
+                _log.Claims = customResult.Claims.ToClaimsDictionary();
+            }
 
             LogSuccess();
             return customResult;
@@ -152,48 +121,27 @@ namespace IdentityServer3.Core.Validation
 
             _log.ExpectedScope = expectedScope;
             _log.ValidateLifetime = true;
-
+        
             TokenValidationResult result;
 
             if (token.Contains("."))
             {
-                if (token.Length > _options.InputLengthRestrictions.Jwt)
-                {
-                    Logger.Error("JWT too long");
-
-                    return new TokenValidationResult
-                    {
-                        IsError = true,
-                        Error = Constants.ProtectedResourceErrors.InvalidToken,
-                        ErrorDescription = "Token too long"
-                    };
-                }
-
                 _log.AccessTokenType = AccessTokenType.Jwt.ToString();
                 result = await ValidateJwtAsync(
                     token,
-                    string.Format(Constants.AccessTokenAudience, IssuerUri.EnsureTrailingSlash()),
-                    await _keyService.GetPublicKeysAsync());
+                    string.Format(Constants.AccessTokenAudience, _options.IssuerUri.EnsureTrailingSlash()),
+                    new X509SecurityKey(_options.SigningCertificate));
             }
             else
             {
-                if (token.Length > _options.InputLengthRestrictions.TokenHandle)
-                {
-                    Logger.Error("token handle too long");
-
-                    return new TokenValidationResult
-                    {
-                        IsError = true,
-                        Error = Constants.ProtectedResourceErrors.InvalidToken,
-                        ErrorDescription = "Token too long"
-                    };
-                }
-
                 _log.AccessTokenType = AccessTokenType.Reference.ToString();
                 result = await ValidateReferenceAccessTokenAsync(token);
             }
 
-            _log.Claims = result.Claims.ToClaimsDictionary();
+            if (_options.LoggingOptions.IncludeSensitiveDataInLogs)
+            {
+                _log.Claims = result.Claims.ToClaimsDictionary();
+            }
 
             if (result.IsError)
             {
@@ -214,18 +162,21 @@ namespace IdentityServer3.Core.Validation
 
             if (customResult.IsError)
             {
-                LogError("Custom validator failed: " + (customResult.Error ?? "unknown"));
+                LogError("Custom validator failed: " + customResult.Error ?? "unknown");
                 return customResult;
             }
 
             // add claims again after custom validation
-            _log.Claims = customResult.Claims.ToClaimsDictionary();
+            if (_options.LoggingOptions.IncludeSensitiveDataInLogs)
+            {
+                _log.Claims = customResult.Claims.ToClaimsDictionary();
+            }
 
             LogSuccess();
             return customResult;
         }
 
-        private async Task<TokenValidationResult> ValidateJwtAsync(string jwt, string audience, IEnumerable<X509Certificate2> signingCertificates, bool validateLifetime = true)
+        public virtual Task<TokenValidationResult> ValidateJwtAsync(string jwt, string audience, SecurityKey signingKey, bool validateLifetime = true)
         {
             var handler = new JwtSecurityTokenHandler
             {
@@ -237,12 +188,10 @@ namespace IdentityServer3.Core.Validation
                     }
             };
 
-            var keys = (from c in signingCertificates select new X509SecurityKey(c)).ToList();
-
             var parameters = new TokenValidationParameters
             {
-                ValidIssuer = IssuerUri,
-                IssuerSigningKeys = keys,
+                ValidIssuer = _options.IssuerUri,
+                IssuerSigningKey = signingKey,
                 ValidateLifetime = validateLifetime,
                 ValidAudience = audience
             };
@@ -259,35 +208,20 @@ namespace IdentityServer3.Core.Validation
                     _log.JwtId = jwtId.Value;
                 }
 
-                // load the client that belongs to the client_id claim
-                Client client = null;
-                var clientId = id.FindFirst(Constants.ClaimTypes.ClientId);
-                if (clientId != null)
+                return Task.FromResult(new TokenValidationResult
                 {
-                    client = await _clients.FindClientByIdAsync(clientId.Value);
-                    if (client == null)
-                    {
-                        throw new InvalidOperationException("Client does not exist anymore.");
-                    }
-                }
-
-                return new TokenValidationResult
-                {
-                    IsError = false,
-
                     Claims = id.Claims,
-                    Client = client,
                     Jwt = jwt
-                };
+                });
             }
             catch (Exception ex)
             {
-                Logger.InfoException("JWT token validation error", ex);
-                return Invalid(Constants.ProtectedResourceErrors.InvalidToken);
+                Logger.ErrorException("JWT token validation error", ex);
+                return Task.FromResult(Invalid(Constants.ProtectedResourceErrors.InvalidToken));
             }
         }
 
-        private async Task<TokenValidationResult> ValidateReferenceAccessTokenAsync(string tokenHandle)
+        protected virtual async Task<TokenValidationResult> ValidateReferenceAccessTokenAsync(string tokenHandle)
         {
             _log.TokenHandle = tokenHandle;
             var token = await _tokenHandles.GetAsync(tokenHandle);
@@ -316,23 +250,20 @@ namespace IdentityServer3.Core.Validation
 
             return new TokenValidationResult
             {
-                IsError = false,
-
-                Client = token.Client,
                 Claims = ReferenceTokenToClaims(token),
                 ReferenceToken = token,
                 ReferenceTokenId = tokenHandle
             };
         }
 
-        private IEnumerable<Claim> ReferenceTokenToClaims(Token token)
+        protected virtual IEnumerable<Claim> ReferenceTokenToClaims(Token token)
         {
             var claims = new List<Claim>
             {
                 new Claim(Constants.ClaimTypes.Audience, token.Audience),
                 new Claim(Constants.ClaimTypes.Issuer, token.Issuer),
-                new Claim(Constants.ClaimTypes.NotBefore, token.CreationTime.ToEpochTime().ToString(), ClaimValueTypes.Integer),
-                new Claim(Constants.ClaimTypes.Expiration, token.CreationTime.AddSeconds(token.Lifetime).ToEpochTime().ToString(), ClaimValueTypes.Integer)
+                new Claim(Constants.ClaimTypes.NotBefore, token.CreationTime.ToEpochTime().ToString()),
+                new Claim(Constants.ClaimTypes.Expiration, token.CreationTime.AddSeconds(token.Lifetime).ToEpochTime().ToString())
             };
 
             claims.AddRange(token.Claims);
@@ -340,23 +271,15 @@ namespace IdentityServer3.Core.Validation
             return claims;
         }
 
-        private string GetClientIdFromJwt(string token)
+        protected virtual string GetClientIdFromJwt(string token)
         {
-            try
-            {
-                var jwt = new JwtSecurityToken(token);
-                var clientId = jwt.Audiences.FirstOrDefault();
+            var jwt = new JwtSecurityToken(token);
+            var clientId = jwt.Audiences.FirstOrDefault();
 
-                return clientId;
-            }
-            catch (Exception ex)
-            {
-                Logger.ErrorException("Malformed JWT token", ex);
-                return null;
-            }
+            return clientId;
         }
 
-        private TokenValidationResult Invalid(string error)
+        protected virtual TokenValidationResult Invalid(string error)
         {
             return new TokenValidationResult
             {

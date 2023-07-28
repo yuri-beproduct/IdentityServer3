@@ -16,7 +16,7 @@
 
 using System.Diagnostics;
 
-namespace IdentityServer3.Core.Logging
+namespace Thinktecture.IdentityServer.Core.Logging
 {
     internal class LibLogTraceListener : TraceListener
     {

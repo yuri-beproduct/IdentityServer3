@@ -17,7 +17,7 @@
 using System;
 using System.Web.Http.Filters;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     internal class NoCacheAttribute : ActionFilterAttribute
     {

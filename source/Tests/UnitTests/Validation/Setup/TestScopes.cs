@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
     class TestScopes
     {

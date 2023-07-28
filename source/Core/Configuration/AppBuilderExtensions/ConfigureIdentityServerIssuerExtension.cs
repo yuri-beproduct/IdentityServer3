@@ -14,32 +14,27 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Extensions;
 using Microsoft.Owin;
 using System;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Extensions;
 
 namespace Owin
 {
     internal static class ConfigureIdentityServerIssuerExtension
     {
-        // todo: remove this in 3.0.0 as it will be unnecessary. it's only being maintained now for backwards compat with 2.0 APIs.
         public static IAppBuilder ConfigureIdentityServerIssuer(this IAppBuilder app, IdentityServerOptions options)
         {
             if (app == null) throw new ArgumentNullException("app");
             if (options == null) throw new ArgumentNullException("options");
 
-            if (options.IssuerUri.IsPresent())
+            if (String.IsNullOrWhiteSpace(options.IssuerUri))
             {
-                options.DynamicallyCalculatedIssuerUri = options.IssuerUri;
-            }
-            else
-            { 
                 Action<IOwinContext> op = ctx =>
                 {
                     var uri = ctx.Environment.GetIdentityServerBaseUrl();
                     if (uri.EndsWith("/")) uri = uri.Substring(0, uri.Length - 1);
-                    options.DynamicallyCalculatedIssuerUri = uri;
+                    options.IssuerUri = uri;
                 };
 
                 app.Use(async (ctx, next) =>

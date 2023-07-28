@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Validation;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Default custom token validator
@@ -33,7 +32,7 @@ namespace IdentityServer3.Core.Services.Default
         /// <summary>
         /// The logger
         /// </summary>
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        protected static ILog Logger = LogProvider.GetCurrentClassLogger();
 
         /// <summary>
         /// The user service
@@ -81,10 +80,7 @@ namespace IdentityServer3.Core.Services.Default
                     principal.Identities.First().AddClaim(new Claim(Constants.ClaimTypes.ReferenceTokenId, result.ReferenceTokenId));
                 }
 
-                var isActiveCtx = new IsActiveContext(principal, result.Client);
-                await _users.IsActiveAsync(isActiveCtx);
-                
-                if (isActiveCtx.IsActive == false)
+                if (await _users.IsActiveAsync(principal) == false)
                 {
                     Logger.Warn("User marked as not active: " + subClaim.Value);
 
@@ -131,10 +127,7 @@ namespace IdentityServer3.Core.Services.Default
             {
                 var principal = Principal.Create("tokenvalidator", result.Claims.ToArray());
 
-                var isActiveCtx = new IsActiveContext(principal, result.Client);
-                await _users.IsActiveAsync(isActiveCtx);
-                
-                if (isActiveCtx.IsActive == false)
+                if (await _users.IsActiveAsync(principal) == false)
                 {
                     Logger.Warn("User marked as not active: " + subClaim.Value);
 

@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
 using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.ResponseHandling
+namespace Thinktecture.IdentityServer.Core.ResponseHandling
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class TokenResponseGenerator
@@ -36,36 +36,29 @@ namespace IdentityServer3.Core.ResponseHandling
         private readonly ITokenService _tokenService;
         private readonly IRefreshTokenService _refreshTokenService;
         private readonly IScopeStore _scopes;
-        private readonly ICustomTokenResponseGenerator _customResponseGenerator;
-
-        public TokenResponseGenerator(ITokenService tokenService, IRefreshTokenService refreshTokenService, IScopeStore scopes, ICustomTokenResponseGenerator customResponseGenerator)
+       
+        public TokenResponseGenerator(ITokenService tokenService, IRefreshTokenService refreshTokenService, IScopeStore scopes)
         {
             _tokenService = tokenService;
             _refreshTokenService = refreshTokenService;
             _scopes = scopes;
-            _customResponseGenerator = customResponseGenerator;
         }
 
         public async Task<TokenResponse> ProcessAsync(ValidatedTokenRequest request)
         {
             Logger.Info("Creating token response");
 
-            TokenResponse response;
-
             if (request.GrantType == Constants.GrantTypes.AuthorizationCode)
             {
-                response = await ProcessAuthorizationCodeRequestAsync(request);
-            }
-            else if (request.GrantType == Constants.GrantTypes.RefreshToken)
-            {
-                response = await ProcessRefreshTokenRequestAsync(request);
-            }
-            else
-            {
-                response = await ProcessTokenRequestAsync(request);
+                return await ProcessAuthorizationCodeRequestAsync(request);
             }
 
-            return await _customResponseGenerator.GenerateAsync(request, response);
+            if (request.GrantType == Constants.GrantTypes.RefreshToken)
+            {
+                return await ProcessRefreshTokenRequestAsync(request);
+            }
+
+            return await ProcessTokenRequestAsync(request);
         }
 
         private async Task<TokenResponse> ProcessAuthorizationCodeRequestAsync(ValidatedTokenRequest request)
@@ -81,12 +74,6 @@ namespace IdentityServer3.Core.ResponseHandling
                 AccessToken = accessToken.Item1,
                 AccessTokenLifetime = request.Client.AccessTokenLifetime
             };
-
-            if (request.RequestedTokenType == RequestedTokenTypes.PoP)
-            {
-                response.TokenType = Constants.ResponseTokenTypes.PoP;
-                response.Algorithm = request.ProofKeyAlgorithm;
-            }
 
             //////////////////////////
             // refresh token
@@ -144,56 +131,39 @@ namespace IdentityServer3.Core.ResponseHandling
 
             var oldAccessToken = request.RefreshToken.AccessToken;
             string accessTokenString;
-
-            // if pop request, claims must be updated because we need a fresh proof token
-            if (request.Client.UpdateAccessTokenClaimsOnRefresh || request.RequestedTokenType == RequestedTokenTypes.PoP)
+            
+            if (request.Client.UpdateAccessTokenClaimsOnRefresh)
             {
-                var subject = request.RefreshToken.GetOriginalSubject();
+                // re-create original subject
+                var subject = IdentityServerPrincipal.FromClaims(oldAccessToken.Claims, allowMissing: true);
 
                 var creationRequest = new TokenCreationRequest
                 {
                     Client = request.Client,
                     Subject = subject,
                     ValidatedRequest = request,
-                    Scopes = await _scopes.FindScopesAsync(oldAccessToken.Scopes),
+                    Scopes = await _scopes.FindScopesAsync(oldAccessToken.Scopes)
                 };
-
-                // if pop request, embed proof token
-                if (request.RequestedTokenType == RequestedTokenTypes.PoP)
-                {
-                    creationRequest.ProofKey = GetProofKey(request);
-                }
 
                 var newAccessToken = await _tokenService.CreateAccessTokenAsync(creationRequest);
                 accessTokenString = await _tokenService.CreateSecurityTokenAsync(newAccessToken);
             }
             else
             {
-                var copy = new Token(oldAccessToken);
-                copy.CreationTime = DateTimeOffsetHelper.UtcNow;
-                copy.Lifetime = request.Client.AccessTokenLifetime;
+                oldAccessToken.CreationTime = DateTimeOffsetHelper.UtcNow;
+                oldAccessToken.Lifetime = request.Client.AccessTokenLifetime;
 
-                accessTokenString = await _tokenService.CreateSecurityTokenAsync(copy);
+                accessTokenString = await _tokenService.CreateSecurityTokenAsync(oldAccessToken);
             }
 
             var handle = await _refreshTokenService.UpdateRefreshTokenAsync(request.RefreshTokenHandle, request.RefreshToken, request.Client);
 
-            var response = new TokenResponse
-            {
-                AccessToken = accessTokenString,
-                AccessTokenLifetime = request.Client.AccessTokenLifetime,
-                RefreshToken = handle
-            };
-
-            if (request.RequestedTokenType == RequestedTokenTypes.PoP)
-            {
-                response.TokenType = Constants.ResponseTokenTypes.PoP;
-                response.Algorithm = request.ProofKeyAlgorithm;
-            }
-
-            response.IdentityToken = await CreateIdTokenFromRefreshTokenRequestAsync(request, accessTokenString);
-
-            return response;
+            return new TokenResponse
+                {
+                    AccessToken = accessTokenString,
+                    AccessTokenLifetime = request.Client.AccessTokenLifetime,
+                    RefreshToken = handle
+                };
         }
 
         private async Task<Tuple<string, string>> CreateAccessTokenAsync(ValidatedTokenRequest request)
@@ -204,7 +174,7 @@ namespace IdentityServer3.Core.ResponseHandling
             if (request.AuthorizationCode != null)
             {
                 createRefreshToken = request.AuthorizationCode.RequestedScopes.Select(s => s.Name).Contains(Constants.StandardScopes.OfflineAccess);
-
+                
                 tokenRequest = new TokenCreationRequest
                 {
                     Subject = request.AuthorizationCode.Subject,
@@ -226,43 +196,16 @@ namespace IdentityServer3.Core.ResponseHandling
                 };
             }
 
-            // bind proof key to token if present
-            if (request.RequestedTokenType == RequestedTokenTypes.PoP)
-            {
-                tokenRequest.ProofKey = GetProofKey(request);
-            }
-
             Token accessToken = await _tokenService.CreateAccessTokenAsync(tokenRequest);
 
             string refreshToken = "";
             if (createRefreshToken)
             {
-                refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(tokenRequest.Subject, accessToken, request.Client);
+                refreshToken = await _refreshTokenService.CreateRefreshTokenAsync(accessToken, request.Client);
             }
 
             var securityToken = await _tokenService.CreateSecurityTokenAsync(accessToken);
             return Tuple.Create(securityToken, refreshToken);
-        }
-
-        private string GetProofKey(ValidatedTokenRequest request)
-        {
-            // for now we only support client generated proof keys
-            return request.ProofKey;
-        }
-
-        private async Task<string> CreateIdTokenFromRefreshTokenRequestAsync(ValidatedTokenRequest request, string newAccessToken)
-        {
-            var oldAccessToken = request.RefreshToken.AccessToken;
-            var tokenRequest = new TokenCreationRequest
-            {
-                Subject = request.RefreshToken.GetOriginalSubject(),
-                Client = request.Client,
-                Scopes = await _scopes.FindScopesAsync(oldAccessToken.Scopes),
-                ValidatedRequest = request,
-                AccessTokenToHash = newAccessToken
-            };
-            var idToken = await _tokenService.CreateIdentityTokenAsync(tokenRequest);
-            return await _tokenService.CreateSecurityTokenAsync(idToken);
         }
     }
 }

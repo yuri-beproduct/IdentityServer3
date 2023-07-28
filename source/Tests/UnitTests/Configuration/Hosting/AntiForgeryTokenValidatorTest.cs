@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Tests.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Tests.Configuration.Hosting
 {
-
+    
     public class AntiForgeryTokenValidatorTest
     {
     }

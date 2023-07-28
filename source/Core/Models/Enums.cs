@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// OpenID Connect scope types.
@@ -65,17 +65,7 @@ namespace IdentityServer3.Core.Models
         /// <summary>
         /// custom grant
         /// </summary>
-        Custom = 5,
-
-        /// <summary>
-        /// authorization code with proof key flow
-        /// </summary>
-        AuthorizationCodeWithProofKey = 6,
-
-        /// <summary>
-        /// hybrid flow with proof key
-        /// </summary>
-        HybridWithProofKey = 7
+        Custom = 5
     }
 
     /// <summary>

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Logging;
 using Owin;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
+using Thinktecture.IdentityServer.Core.Logging;
 
-namespace IdentityServer3.Core.Configuration
+namespace Thinktecture.IdentityServer.Core.Configuration
 {
     /// <summary>
     /// The IdentityServerOptions class is the top level container for all configuration settings of IdentityServer.
@@ -39,13 +39,12 @@ namespace IdentityServer3.Core.Configuration
             this.ProtocolLogoutUrls = new List<string>();
             this.RequireSsl = true;
             this.Endpoints = new EndpointOptions();
+            this.CorsPolicy = new CorsPolicy();
             this.AuthenticationOptions = new AuthenticationOptions();
             this.CspOptions = new CspOptions();
             this.LoggingOptions = new LoggingOptions();
             this.EventsOptions = new EventsOptions();
             this.EnableWelcomePage = true;
-            this.InputLengthRestrictions = new InputLengthRestrictions();
-            this.DiscoveryOptions = new DiscoveryOptions();
         }
 
         internal void Validate()
@@ -61,6 +60,11 @@ namespace IdentityServer3.Core.Configuration
             if (Endpoints == null)
             {
                 throw new ArgumentException("Endpoints is missing");
+            }
+            
+            if (LoggingOptions.EnableHttpLogging || LoggingOptions.EnableWebApiDiagnostics || LoggingOptions.IncludeSensitiveDataInLogs)
+            {
+                Logger.Warn("Detailed logging is enabled, potentially sensitive data will be exposed in log files.");
             }
         }
 
@@ -79,12 +83,6 @@ namespace IdentityServer3.Core.Configuration
         /// Unique name of this server instance, e.g. https://myissuer.com
         /// </value>
         public string IssuerUri { get; set; }
-
-        // todo: remove in 3.0.0
-        // added as a temporary measure since we need someplace to hold the calculated 
-        // IssuerUri from the first request for the scenarios where the newer GetIdentityServerIssuerUri
-        // extension method is not being used
-        internal string DynamicallyCalculatedIssuerUri { get; set; }
 
         /// <summary>
         /// Gets or sets the X.509 certificate (and corresponding private key) for signing security tokens.
@@ -143,14 +141,6 @@ namespace IdentityServer3.Core.Configuration
         public EndpointOptions Endpoints { get; set; }
 
         /// <summary>
-        /// Gets or sets the discovery endpoint configuration.
-        /// </summary>
-        /// <value>
-        /// The discovery endpoint configuration.
-        /// </value>
-        public DiscoveryOptions DiscoveryOptions { get; set; }
-
-        /// <summary>
         /// Gets or sets the authentication options.
         /// </summary>
         /// <value>
@@ -165,6 +155,14 @@ namespace IdentityServer3.Core.Configuration
         /// The plugin configuration.
         /// </value>
         public Action<IAppBuilder, IdentityServerOptions> PluginConfiguration { get; set; }
+
+        /// <summary>
+        /// Gets or sets the CORS policy.
+        /// </summary>
+        /// <value>
+        /// The CORS policy.
+        /// </value>
+        public CorsPolicy CorsPolicy { get; set; }
 
         /// <summary>
         /// Gets or sets the protocol logout urls.
@@ -197,14 +195,6 @@ namespace IdentityServer3.Core.Configuration
         /// The events options.
         /// </value>
         public EventsOptions EventsOptions { get; set; }
-
-        /// <summary>
-        /// Gets or sets the max input length restrictions.
-        /// </summary>
-        /// <value>
-        /// The length restrictions.
-        /// </value>
-        public InputLengthRestrictions InputLengthRestrictions { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the welcome page is enabled.

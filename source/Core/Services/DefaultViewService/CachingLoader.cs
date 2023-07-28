@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-using System.Threading.Tasks;
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// <see cref="IViewLoader"/> decorator implementation that caches HTML templates in-memory.
@@ -41,12 +40,12 @@ namespace IdentityServer3.Core.Services.Default
         /// </summary>
         /// <param name="name">The name.</param>
         /// <returns></returns>
-        public async Task<string> LoadAsync(string name)
+        public string Load(string name)
         {
             var value = cache.Read(name);
             if (value == null)
             {
-                value = await inner.LoadAsync(name);
+                value = inner.Load(name);
                 cache.Write(name, value);
             }
             return value;

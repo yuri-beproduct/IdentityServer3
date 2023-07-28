@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Models the identity of a user authenticating from an external identity provider.

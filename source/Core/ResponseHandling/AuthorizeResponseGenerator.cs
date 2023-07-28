@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
 using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.ResponseHandling
+namespace Thinktecture.IdentityServer.Core.ResponseHandling
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class AuthorizeResponseGenerator
@@ -49,7 +49,7 @@ namespace IdentityServer3.Core.ResponseHandling
 
         public async Task<AuthorizeResponse> CreateResponseAsync(ValidatedAuthorizeRequest request)
         {
-            if (request.Flow == Flows.AuthorizationCode || request.Flow == Flows.AuthorizationCodeWithProofKey)
+            if (request.Flow == Flows.AuthorizationCode)
             {
                 return await CreateCodeFlowResponseAsync(request);
             }
@@ -57,7 +57,7 @@ namespace IdentityServer3.Core.ResponseHandling
             {
                 return await CreateImplicitFlowResponseAsync(request);
             }
-            if (request.Flow == Flows.Hybrid || request.Flow == Flows.HybridWithProofKey)
+            if (request.Flow == Flows.Hybrid)
             {
                 return await CreateHybridFlowResponseAsync(request);
             }
@@ -105,9 +105,6 @@ namespace IdentityServer3.Core.ResponseHandling
             {
                 Client = request.Client,
                 Subject = request.Subject,
-                SessionId = request.SessionId,
-                CodeChallenge = request.CodeChallenge.Sha256(),
-                CodeChallengeMethod = request.CodeChallengeMethod,
 
                 IsOpenId = request.IsOpenIdRequest,
                 RequestedScopes = request.ValidatedScopes.GrantedScopes,
@@ -121,7 +118,7 @@ namespace IdentityServer3.Core.ResponseHandling
             var id = CryptoRandom.CreateUniqueId();
             await _authorizationCodes.StoreAsync(id, code);
 
-            await RaiseCodeIssuedEventAsync(id, code);
+            RaiseCodeIssuedEvent(id, code);
 
             return id;
         }
@@ -217,9 +214,9 @@ namespace IdentityServer3.Core.ResponseHandling
             return Base64Url.Encode(hash) + "." + salt;
         }
 
-        private async Task RaiseCodeIssuedEventAsync(string id, AuthorizationCode code)
+        private void RaiseCodeIssuedEvent(string id, AuthorizationCode code)
         {
-            await _events.RaiseAuthorizationCodeIssuedEventAsync(id, code);
+            _events.RaiseAuthorizationCodeIssuedEvent(id, code);
         }
     }
 }

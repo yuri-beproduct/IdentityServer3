@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Events
+namespace Thinktecture.IdentityServer.Core.Events
 {
-    public class EndpointDetail
+    class EndpointDetail
     {
         public string EndpointName { get; set; }
     }

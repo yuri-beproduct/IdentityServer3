@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.ViewModels;
 using Microsoft.Owin;
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class AntiForgeryToken
@@ -58,21 +59,16 @@ namespace IdentityServer3.Core.Configuration.Hosting
                 Value = token
             };
         }
-        
+
         internal async Task<bool> IsTokenValid()
         {
-            if (context.GetSuppressAntiForgeryCheck())
-            {
-                return true;
-            }
-
             try
             {
                 var cookieToken = GetCookieToken();
                 var hiddenInputToken = await GetHiddenInputTokenAsync();
                 return CompareByteArrays(cookieToken, hiddenInputToken);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.ErrorException("AntiForgeryTokenValidator validating token", ex);
             }
@@ -84,9 +80,9 @@ namespace IdentityServer3.Core.Configuration.Hosting
         {
             if (cookieToken == null || hiddenInputToken == null) return false;
             if (cookieToken.Length != hiddenInputToken.Length) return false;
-            
+
             bool same = true;
-            for(var i = 0; i < cookieToken.Length; i++)
+            for (var i = 0; i < cookieToken.Length; i++)
             {
                 same &= (cookieToken[i] == hiddenInputToken[i]);
             }
@@ -106,7 +102,7 @@ namespace IdentityServer3.Core.Configuration.Hosting
                     var tokenBytes = options.DataProtector.Unprotect(protectedCookieBytes, CookieEntropy);
                     return tokenBytes;
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     // if there's an exception we fall thru the catch block to reissue a new cookie
                     Logger.WarnFormat("Problem unprotecting cookie; Issuing new cookie. Error message: {0}", ex.Message);
@@ -116,13 +112,10 @@ namespace IdentityServer3.Core.Configuration.Hosting
             var bytes = CryptoRandom.CreateRandomKey(16);
             var protectedTokenBytes = options.DataProtector.Protect(bytes, CookieEntropy);
             var token = Base64Url.Encode(protectedTokenBytes);
-            
-            var secure = 
-                options.AuthenticationOptions.CookieOptions.SecureMode == CookieSecureMode.Always || 
-                context.Request.Scheme == Uri.UriSchemeHttps;
 
+            var secure = context.Request.Scheme == Uri.UriSchemeHttps;
             var path = context.Request.Environment.GetIdentityServerBasePath().CleanUrlPath();
-            context.Response.Cookies.Append(cookieName, token, new Microsoft.Owin.CookieOptions
+            context.Response.AppendCookie(cookieName, token, new Microsoft.Owin.CookieOptions
             {
                 HttpOnly = true,
                 Secure = secure,
@@ -134,14 +127,28 @@ namespace IdentityServer3.Core.Configuration.Hosting
 
         async Task<byte[]> GetHiddenInputTokenAsync()
         {
-            var form = await context.ReadRequestFormAsync();
+            // hack to clear a possible cached type from Katana in environment
+            context.Environment.Remove("Microsoft.Owin.Form#collection");
+
+            if (!context.Request.Body.CanSeek)
+            {
+                var copy = new MemoryStream();
+                await context.Request.Body.CopyToAsync(copy);
+                copy.Seek(0L, SeekOrigin.Begin);
+                context.Request.Body = copy;
+            }
+            var form = await context.Request.ReadFormAsync();
+            context.Request.Body.Seek(0L, SeekOrigin.Begin);
+
+            // hack to prevent caching of an internalized type from Katana in environment
+            context.Environment.Remove("Microsoft.Owin.Form#collection");
 
             var token = form[TokenName];
             if (token == null) return null;
 
             var tokenBytes = Base64Url.Decode(token);
             var unprotectedTokenBytes = options.DataProtector.Unprotect(tokenBytes, HiddenInputEntropy);
-            
+
             return unprotectedTokenBytes;
         }
     }

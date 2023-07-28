@@ -14,39 +14,15 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Extensions;
 using System;
+using Thinktecture.IdentityServer.Core.Configuration;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Registration for the default view service.
     /// </summary>
-    public class DefaultViewServiceRegistration : DefaultViewServiceRegistration<DefaultViewService>
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DefaultViewServiceRegistration"/> class.
-        /// </summary>
-        public DefaultViewServiceRegistration()
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DefaultViewServiceRegistration"/> class.
-        /// </summary>
-        /// <param name="options">The options.</param>
-        public DefaultViewServiceRegistration(DefaultViewServiceOptions options)
-            : base(options)
-        {
-        }
-    }
-    
-    /// <summary>
-    /// Registration for a customer view service derived from the DefaultViewService.
-    /// </summary>
-    public class DefaultViewServiceRegistration<T> : Registration<IViewService, T>
-        where T : DefaultViewService
+    public class DefaultViewServiceRegistration : Registration<IViewService, DefaultViewService>
     {
         const string InnerRegistrationName = "DefaultViewServiceRegistration.inner";
 
@@ -71,17 +47,7 @@ namespace IdentityServer3.Core.Services.Default
 
             if (options.ViewLoader == null)
             {
-                if (options.CustomViewDirectory.IsPresent())
-                {
-                    options.ViewLoader = new Registration<IViewLoader>(provider =>
-                    {
-                        return new FileSystemWithEmbeddedFallbackViewLoader(options.CustomViewDirectory);
-                    });
-                }
-                else
-                {
-                    options.ViewLoader = new Registration<IViewLoader, FileSystemWithEmbeddedFallbackViewLoader>();
-                }
+                options.ViewLoader = new Registration<IViewLoader, FileSystemWithEmbeddedFallbackViewLoader>();
             }
 
             if (options.CacheViews)

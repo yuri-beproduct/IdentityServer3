@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core.Extensions;
 
-namespace IdentityServer3.Core.Models
+namespace Thinktecture.IdentityServer.Core.Models
 {
     /// <summary>
     /// Models a token.
@@ -108,18 +108,6 @@ namespace IdentityServer3.Core.Models
         public Token(string tokenType) : this()
         {
             Type = tokenType;
-        }
-
-        internal Token(Token other)
-        {
-            Audience = other.Audience;
-            Claims = other.Claims.ToList();
-            Client = other.Client;
-            CreationTime = other.CreationTime;
-            Issuer = other.Issuer;
-            Lifetime = other.Lifetime;
-            Type = other.Type;
-            Version = other.Version;
         }
 
         /// <summary>

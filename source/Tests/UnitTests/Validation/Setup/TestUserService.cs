@@ -14,59 +14,52 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
     class TestUserService : IUserService
     {
-        public Task AuthenticateLocalAsync(LocalAuthenticationContext context)
+        public Task<AuthenticateResult> AuthenticateLocalAsync(string username, string password, SignInMessage message)
         {
-            if (context.UserName == context.Password)
+            if (username == password)
             {
-                var p = IdentityServerPrincipal.Create(context.UserName, context.UserName, "password", "idsvr");
-                context.AuthenticateResult = new AuthenticateResult(p);
-            }
-            else
-            {
-                context.AuthenticateResult = new AuthenticateResult("Username and/or password incorrect");
+                var p = IdentityServerPrincipal.Create(username, username, "password", "idsvr");
+                return Task.FromResult(new AuthenticateResult(p));
             }
 
-            return Task.FromResult(0);
+            return Task.FromResult<AuthenticateResult>(null);
         }
 
-        public Task GetProfileDataAsync(ProfileDataRequestContext context)
+        public Task<IEnumerable<Claim>> GetProfileDataAsync(ClaimsPrincipal sub, IEnumerable<string> requestedClaimTypes = null)
         {
-            return Task.FromResult(0);
+            throw new NotImplementedException();
         }
 
-        public Task AuthenticateExternalAsync(ExternalAuthenticationContext context)
+        public Task<AuthenticateResult> AuthenticateExternalAsync(ExternalIdentity user, SignInMessage message)
         {
-            return Task.FromResult(0);
+            throw new NotImplementedException();
         }
 
-        public Task PostAuthenticateAsync(PostAuthenticationContext context)
+        public Task<bool> IsActiveAsync(ClaimsPrincipal subject)
         {
-            return Task.FromResult(0);
+            return Task.FromResult(true);
         }
 
-        public Task IsActiveAsync(IsActiveContext context)
+        public Task<AuthenticateResult> PreAuthenticateAsync(SignInMessage message)
         {
-            context.IsActive = true;
-            return Task.FromResult(0);
-        }
-
-        public Task PreAuthenticateAsync(PreAuthenticationContext context)
-        {
-            return Task.FromResult(0);
+            throw new NotImplementedException();
         }
         
-        public Task SignOutAsync(SignOutContext context)
+        public Task SignOutAsync(ClaimsPrincipal subject)
         {
-            return Task.FromResult(0);
+            throw new NotImplementedException();
         }
     }
 }

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Logging;
 
-namespace IdentityServer3.Core.Extensions
+namespace Thinktecture.IdentityServer.Core.Extensions
 {
     internal static class ClaimListExtensions
     {
@@ -67,6 +67,18 @@ namespace IdentityServer3.Core.Extensions
 
         private static object GetValue(Claim claim)
         {
+            if (claim.Type == Constants.ClaimTypes.Address)
+            {
+                try
+                {
+                    return JsonConvert.DeserializeObject(claim.Value);
+                }
+                catch (Exception ex)
+                {
+                    Logger.ErrorException("Exception while deserializing address claim", ex);
+                }
+            }
+
             if (claim.ValueType == ClaimValueTypes.Integer ||
                 claim.ValueType == ClaimValueTypes.Integer32)
             {
@@ -93,16 +105,6 @@ namespace IdentityServer3.Core.Extensions
                 {
                     return value;
                 }
-            }
-
-            if (claim.ValueType == Constants.ClaimValueTypes.Json)
-            {
-                try
-                {
-                    return JsonConvert.DeserializeObject(claim.Value);
-                }
-                catch { }
-                
             }
 
             return claim.Value;

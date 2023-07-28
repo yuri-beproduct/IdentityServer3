@@ -18,7 +18,7 @@ using Microsoft.Owin;
 using System;
 using System.Collections.Generic;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Container for the OWIN environment.

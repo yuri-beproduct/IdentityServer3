@@ -19,7 +19,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// In-memory cache used by the view service

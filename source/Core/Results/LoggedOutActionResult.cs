@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.ViewModels;
 using System;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Results
+namespace Thinktecture.IdentityServer.Core.Results
 {
     internal class LoggedOutActionResult : HtmlStreamActionResult
     {
-        public LoggedOutActionResult(IViewService viewSvc, LoggedOutViewModel model, SignOutMessage message)
-            : base(async () => await viewSvc.LoggedOut(model, message))
+        public LoggedOutActionResult(IViewService viewSvc, LoggedOutViewModel model)
+            : base(async () => await viewSvc.LoggedOut(model))
         {
             if (viewSvc == null) throw new ArgumentNullException("viewSvc");
             if (model == null) throw new ArgumentNullException("model");

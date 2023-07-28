@@ -15,22 +15,23 @@
  */
 
 using FluentAssertions;
-using IdentityModel;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.ResponseHandling;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.Default;
-using IdentityServer3.Core.Validation;
 using Moq;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.ResponseHandling;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.Default;
+using Thinktecture.IdentityServer.Core.Validation;
 using Xunit;
 
-namespace IdentityServer3.Tests.Connect.ResponseHandling
+namespace Thinktecture.IdentityServer.Tests.Connect.ResponseHandling
 {
-
+    
     public class AuthorizeInteractionResponseGeneratorTests_Login
     {
         IdentityServerOptions options;
@@ -59,12 +60,13 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
         public async Task Authenticated_User_must_not_SignIn()
         {
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
             {
                 ClientId = "foo",
-                Client = new Client()
             };
 
             var principal = IdentityServerPrincipal.Create("123", "dom");
@@ -77,6 +79,8 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
         public async Task Authenticated_User_with_allowed_current_Idp_must_not_SignIn()
         {
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
@@ -101,6 +105,8 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
         public async Task Authenticated_User_with_restricted_current_Idp_must_SignIn()
         {
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
@@ -125,12 +131,13 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
         public async Task Authenticated_User_with_allowed_requested_Idp_must_not_SignIn()
         {
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
             {
                 ClientId = "foo",
-                Client = new Client(),
                  AuthenticationContextReferenceClasses = new List<string>{
                     "idp:" + Constants.BuiltInIdentityProvider
                 }
@@ -146,12 +153,13 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
         public async Task Authenticated_User_with_different_requested_Idp_must_SignIn()
         {
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
             {
                 ClientId = "foo",
-                Client = new Client(),
                 AuthenticationContextReferenceClasses = new List<string>{
                     "idp:some_idp"
                 },
@@ -169,6 +177,8 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
             options.AuthenticationOptions.EnableLocalLogin = false;
 
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest
@@ -194,6 +204,8 @@ namespace IdentityServer3.Tests.Connect.ResponseHandling
             options.AuthenticationOptions.EnableLocalLogin = true;
 
             var users = new Mock<IUserService>();
+            users.Setup(x => x.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult<bool>(true));
+
             var generator = new AuthorizeInteractionResponseGenerator(options, null, users.Object, new DefaultLocalizationService());
 
             var request = new ValidatedAuthorizeRequest

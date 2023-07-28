@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.ViewModels
+namespace Thinktecture.IdentityServer.Core.ViewModels
 {
     /// <summary>
     /// Models common data needed to render pages in IdentityServer.
@@ -52,13 +52,5 @@ namespace IdentityServer3.Core.ViewModels
         /// The logout URL.
         /// </value>
         public string LogoutUrl { get; set; }
-
-        /// <summary>
-        /// Gets or sets the custom data for the model.
-        /// </summary>
-        /// <value>
-        /// The custom data.
-        /// </value>
-        public object Custom { get; set; }
     }
 }

@@ -1,13 +1,7 @@
 # IdentityServer3 #
 
-## Note: This repository is no longer in active development or maintenance, other than reported security vulnerabilities.
-## We highly encourage you to consider [IdentityServer4](https://github.com/IdentityServer/IdentityServer4/) instead.
-## If you have questions and are seeking free support, see [here](http://docs.identityserver.io/en/release/intro/support.html#free-support) for more details.
-## If you require commercial support, see [here](http://docs.identityserver.io/en/release/intro/support.html#commercial-support) for more details.
-
-
 Dev build: [![Build status](https://ci.appveyor.com/api/projects/status/rtaj3nb7c60xg7cb/branch/dev?svg=true)](https://ci.appveyor.com/project/leastprivilege/thinktecture/branch/dev)
-[![Gitter](https://badges.gitter.im/JoinChat.svg)](https://gitter.im/IdentityServer/IdentityServer3?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/IdentityServer/IdentityServer3?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ![openid_certified](https://cloud.githubusercontent.com/assets/1454075/7611268/4d19de32-f97b-11e4-895b-31b2455a7ca6.png)
 
@@ -17,9 +11,9 @@ Dev build: [![Build status](https://ci.appveyor.com/api/projects/status/rtaj3nb7
 
 IdentityServer is a .NET/Katana-based framework and hostable component that allows implementing single sign-on and access control for modern web applications and APIs using protocols like OpenID Connect and OAuth2. It supports a wide range of clients like mobile, web, SPAs and desktop applications and is extensible to allow integration in new and existing architectures.
 
-Watch this for the big picture: [Introduction to OpenID Connect, OAuth2 and IdentityServer](https://vimeo.com/113604459) - and [An Introduction to IdentityServer](https://vimeo.com/154172925) for a more code-centric talk.
+Watch this for the big picture: [Introduction to OpenID Connect, OAuth2 and IdentityServer](http://www.ndcvideos.com/#/app/video/2651).
 
-Go to the documentation [site](https://identityserver.github.io/Documentation/).
+Go to the documenation [site](https://identityserver.github.io/Documentation/).
 
 [OpenID Connect specification](http://openid.net/specs/openid-connect-core-1_0.html) / [OAuth2 specification](http://tools.ietf.org/html/rfc6749 "OAuth2 specification")
 
@@ -39,8 +33,6 @@ public void Configuration(IAppBuilder app)
 }
 ```
 
-*Note:* If you're hosting in IIS, make sure you [enable RAMMFAR in your web.config file](http://identityserver.github.io/Documentation/docsv2/configuration/overview.html).
-
 For more information, e.g.
 
 * support for MembershipReboot and ASP.NET Identity based user stores
@@ -49,7 +41,7 @@ For more information, e.g.
 * support for WS-Federation
 * extensibility
 
-check out the [documentation](https://identityserver.github.io/Documentation/) and the [samples](https://github.com/identityserver/IdentityServer3.Samples).
+check out the [documentation](https://identityserver.github.io/Documentation/) and the [samples](https://github.com/identityserver/Thinktecture.IdentityServer3.Samples).
 
 ## Related repositories ##
 * [Access Token Validation](https://github.com/identityserver/IdentityServer3.AccessTokenValidation)
@@ -64,7 +56,7 @@ IdentityServer is built using the following great open source projects:
 
 - [ASP.NET Web API](https://aspnetwebstack.codeplex.com/)
 - [Autofac](http://autofac.org/)
-- [Json.Net](http://www.newtonsoft.com/json)
+- [Json.Net](http://james.newtonking.com/json)
 - [LibLog](https://github.com/damianh/LibLog)
 - [Katana](https://katanaproject.codeplex.com/)
 - [Web Protection Library](https://wpl.codeplex.com/)
@@ -74,13 +66,9 @@ IdentityServer is built using the following great open source projects:
 ..and is supported by the following open source friendly companies:
 
 - [JetBrains](http://www.jetbrains.com)
-- [Gitter](https://gitter.im/)
-- [Huboard](https://huboard.com/)
-- [AppVeyor](http://www.appveyor.com)
+- [Gitter](http://gitter.im)
+- [Huboard](http://huboard.com)
+- [AppVeyor](http://appveyor.com)
 - [MyGet](http://myget.org)
 
-...and last but not least thanks to all [contributors](https://github.com/IdentityServer/IdentityServer3/graphs/contributors)!
-
-IdentityServer is a [.NET Foundation](http://www.dotnetfoundation.org/) project
-
-<img src="https://cloud.githubusercontent.com/assets/1454075/10598539/1c44ba0a-76fa-11e5-9d7e-af1b363c524a.png" width="144">
+...and last but not least thanks to all [contributors](https://github.com/thinktecture/Thinktecture.IdentityServer.v3/graphs/contributors)!

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
     /// Models a validated request to the authorize endpoint.
@@ -169,20 +169,12 @@ namespace IdentityServer3.Core.Validation
         public string LoginHint { get; set; }
 
         /// <summary>
-        /// Gets or sets the code challenge
+        /// Gets or sets the session identifier.
         /// </summary>
         /// <value>
-        /// The code challenge
+        /// The session identifier.
         /// </value>
-        public string CodeChallenge { get; set; }
-
-        /// <summary>
-        /// Gets or sets the code challenge method
-        /// </summary>
-        /// <value>
-        /// The code challenge method
-        /// </value>
-        public string CodeChallengeMethod { get; set; }
+        public string SessionId { get; set; }
 
         /// <summary>
         /// Gets a value indicating whether an access token was requested.
@@ -196,7 +188,6 @@ namespace IdentityServer3.Core.Validation
             {
                 return (ResponseType == Constants.ResponseTypes.IdTokenToken ||
                         ResponseType == Constants.ResponseTypes.Code ||
-                        ResponseType == Constants.ResponseTypes.CodeIdToken ||
                         ResponseType == Constants.ResponseTypes.CodeToken ||
                         ResponseType == Constants.ResponseTypes.CodeIdTokenToken);
             }

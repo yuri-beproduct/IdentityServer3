@@ -16,7 +16,7 @@
 
 using Autofac;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     internal class AutofacDependencyResolver : IDependencyResolver
     {

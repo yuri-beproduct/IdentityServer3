@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Services.InMemory
+namespace Thinktecture.IdentityServer.Core.Services.InMemory
 {
     /// <summary>
     /// In-memory token handle store
@@ -94,7 +94,7 @@ namespace IdentityServer3.Core.Services.InMemory
         /// <param name="subject">The subject.</param>
         /// <param name="client">The client.</param>
         /// <returns></returns>
-        public async Task RevokeAsync(string subject, string client)
+        public Task RevokeAsync(string subject, string client)
         {
             var query =
                 from item in _repository
@@ -103,8 +103,10 @@ namespace IdentityServer3.Core.Services.InMemory
 
             foreach (var key in query)
             {
-                await RemoveAsync(key);
+                RemoveAsync(key);
             }
+
+            return Task.FromResult(0);
         }
     }
 }

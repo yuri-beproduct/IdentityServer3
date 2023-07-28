@@ -16,7 +16,7 @@
 
 using System.Collections.Generic;
 
-namespace IdentityServer3.Core.ViewModels
+namespace Thinktecture.IdentityServer.Core.ViewModels
 {
     /// <summary>
     /// Models the data needed to render the consent page.

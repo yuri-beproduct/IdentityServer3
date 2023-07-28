@@ -16,7 +16,7 @@
 
 using System.Collections.Generic;
 
-namespace IdentityServer3.Core.Events
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Details base class for issued token events

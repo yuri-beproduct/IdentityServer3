@@ -18,7 +18,7 @@ using System.ComponentModel;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public enum BearerTokenUsageType

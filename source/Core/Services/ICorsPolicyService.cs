@@ -15,7 +15,7 @@
  */
 using System.Threading.Tasks;
 
-namespace IdentityServer3.Core.Services
+namespace Thinktecture.IdentityServer.Core.Services
 {
     /// <summary>
     /// Service that determines if CORS is allowed.

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Events
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Indicates if the event is a success or fail event.

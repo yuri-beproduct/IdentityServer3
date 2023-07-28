@@ -15,7 +15,7 @@
  */
 using System;
 
-namespace IdentityServer3.Core.Extensions
+namespace Thinktecture.IdentityServer.Core.Extensions
 {
     internal static class DateTimeOffsetHelper
     {

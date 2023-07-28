@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Generic;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
     /// Modles the validation result of access tokens and id tokens.
     /// </summary>
-    public class TokenValidationResult : ValidationResult
+    public class TokenValidationResult
     {
         /// <summary>
         /// Gets or sets the claims.
@@ -32,7 +32,6 @@ namespace IdentityServer3.Core.Validation
         /// The claims.
         /// </value>
         public IEnumerable<Claim> Claims { get; set; }
-        
         /// <summary>
         /// Gets or sets the JWT.
         /// </summary>
@@ -40,7 +39,6 @@ namespace IdentityServer3.Core.Validation
         /// The JWT.
         /// </value>
         public string Jwt { get; set; }
-        
         /// <summary>
         /// Gets or sets the reference token.
         /// </summary>
@@ -48,7 +46,6 @@ namespace IdentityServer3.Core.Validation
         /// The reference token.
         /// </value>
         public Token ReferenceToken { get; set; }
-        
         /// <summary>
         /// Gets or sets the reference token identifier.
         /// </summary>
@@ -56,7 +53,6 @@ namespace IdentityServer3.Core.Validation
         /// The reference token identifier.
         /// </value>
         public string ReferenceTokenId { get; set; }
-        
         /// <summary>
         /// Gets or sets the client.
         /// </summary>
@@ -64,5 +60,20 @@ namespace IdentityServer3.Core.Validation
         /// The client.
         /// </value>
         public Client Client { get; set; }
+
+        /// <summary>
+        /// Gets or sets the error.
+        /// </summary>
+        /// <value>
+        /// The error.
+        /// </value>
+        public string Error { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance is error.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is error; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsError { get; set; }
     }
 }

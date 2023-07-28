@@ -14,29 +14,17 @@
  * limitations under the License.
  */
 
-using IdentityModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityModel.Extensions;
 
-namespace IdentityServer3.Core
+namespace Thinktecture.IdentityServer.Core
 {
-    /// <summary>
-    /// Helps creating valid identityserver principals (contain the required claims like sub, auth_time, amr, ...)
-    /// </summary>
-    public static class IdentityServerPrincipal
+    internal static class IdentityServerPrincipal
     {
-        /// <summary>
-        /// Creates an identityserver principal by specifying the required claims
-        /// </summary>
-        /// <param name="subject">Subject ID</param>
-        /// <param name="displayName">Display name</param>
-        /// <param name="authenticationMethod">Authentication method</param>
-        /// <param name="idp">IdP name</param>
-        /// <param name="authenticationType">Authentication type</param>
-        /// <param name="authenticationTime">Authentication time</param>
-        /// <returns>ClaimsPrincipal</returns>
         public static ClaimsPrincipal Create(
             string subject,
             string displayName,
@@ -66,12 +54,6 @@ namespace IdentityServer3.Core
             return new ClaimsPrincipal(id);
         }
 
-        /// <summary>
-        /// Derives an identityserver principal from another principal
-        /// </summary>
-        /// <param name="principal">The other principal</param>
-        /// <param name="authenticationType">Authentication type</param>
-        /// <returns>ClaimsPrincipal</returns>
         public static ClaimsPrincipal CreateFromPrincipal(ClaimsPrincipal principal, string authenticationType)
         {
             // we require the following claims
@@ -94,12 +76,6 @@ namespace IdentityServer3.Core
             return new ClaimsPrincipal(id);
         }
 
-        /// <summary>
-        /// Creates a principal from the subject id and additional claims
-        /// </summary>
-        /// <param name="subjectId">Subject ID</param>
-        /// <param name="additionalClaims">Additional claims</param>
-        /// <returns>ClaimsPrincipal</returns>
         public static ClaimsPrincipal FromSubjectId(string subjectId, IEnumerable<Claim> additionalClaims = null)
         {
             var claims = new List<Claim>
@@ -116,12 +92,6 @@ namespace IdentityServer3.Core
                 claims.Distinct(new ClaimComparer()).ToArray());
         }
 
-        /// <summary>
-        /// Creates a principal from a list of claims
-        /// </summary>
-        /// <param name="claims">The claims</param>
-        /// <param name="allowMissing">Specifies whether required claims must be present</param>
-        /// <returns>ClaimsPrincipal</returns>
         public static ClaimsPrincipal FromClaims(IEnumerable<Claim> claims, bool allowMissing = false)
         {
             var sub = claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.Subject);

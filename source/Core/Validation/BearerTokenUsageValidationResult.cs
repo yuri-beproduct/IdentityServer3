@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
+using System.ComponentModel;
 
-namespace IdentityServer3.Core.Validation
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Validation
 {
-    internal class BearerTokenUsageValidationResult
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public class BearerTokenUsageValidationResult
     {
         public bool TokenFound { get; set; }
         public string Token { get; set; }

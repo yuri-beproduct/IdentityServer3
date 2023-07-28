@@ -1,5 +1,4 @@
-﻿using IdentityServer3.Core;
-/*
+﻿/*
  * Copyright 2014, 2015 Dominick Baier, Brock Allen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +18,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core;
 using Xunit;
 
-namespace IdentityServer3.Tests
+namespace Thinktecture.IdentityServer.Tests
 {
     public class InternalizedDependencyCompatibilityTests
     {

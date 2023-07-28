@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core;
-using IdentityServer3.Core.Services.InMemory;
 using System.Collections.Generic;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
 
-namespace IdentityServer3.Tests.Endpoints
+namespace Thinktecture.IdentityServer.Tests.Endpoints
 {
     public class TestUsers
     {
@@ -44,15 +44,6 @@ namespace IdentityServer3.Tests.Endpoints
                             new Claim(Constants.ClaimTypes.FamilyName, "Smith"),
                             new Claim(Constants.ClaimTypes.Email, "BobSmith@email.com"),
                         }
-                    },
-                    new InMemoryUser{Subject = "999", Username = "sam", Password = "sam",
-                        Claims = new Claim[]
-                        {
-                            new Claim(Constants.ClaimTypes.GivenName, "Sam"),
-                            new Claim(Constants.ClaimTypes.FamilyName, "Smith"),
-                            new Claim(Constants.ClaimTypes.Email, "SamSmith@email.com"),
-                        },
-                        Provider = "Google2", ProviderId = "999"
                     },
                 };
         }

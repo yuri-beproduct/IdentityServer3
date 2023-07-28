@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
     /// Represents a validated request to the user info endpoint

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
 using System.Collections.Generic;
 using System.Linq;
+using Thinktecture.IdentityServer.Core.Configuration;
 
-namespace IdentityServer3.Core.Extensions
+namespace Thinktecture.IdentityServer.Core.Extensions
 {
     internal static class LoginPageLinkExtensions
     {
@@ -40,7 +40,6 @@ namespace IdentityServer3.Core.Extensions
 
                 result.Add(new LoginPageLink
                 {
-                    Type = link.Type,
                     Text = link.Text,
                     Href = url
                 });

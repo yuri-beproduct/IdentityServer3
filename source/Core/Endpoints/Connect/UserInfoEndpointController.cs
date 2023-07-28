@@ -14,25 +14,30 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.ResponseHandling;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Validation;
+using System.ComponentModel;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.ResponseHandling;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Validation;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
     /// <summary>
     /// OpenID Connect userinfo endpoint
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [RoutePrefix(Constants.RoutePaths.Oidc.UserInfo)]
     [NoCache]
     internal class UserInfoEndpointController : ApiController
     {
@@ -66,18 +71,28 @@ namespace IdentityServer3.Core.Endpoints
         /// </summary>
         /// <param name="request">The request.</param>
         /// <returns>userinfo response</returns>
+        [Route]
         [HttpGet, HttpPost]
         public async Task<IHttpActionResult> GetUserInfo(HttpRequestMessage request)
         {
             Logger.Info("Start userinfo request");
 
-            var tokenUsageResult = await _tokenUsageValidator.ValidateAsync(request.GetOwinContext());
+            if (!_options.Endpoints.EnableUserInfoEndpoint)
+            {
+                var error = "Endpoint is disabled. Aborting";
+                Logger.Warn(error);
+                RaiseFailureEvent(error);
+
+                return NotFound();
+            }
+
+            var tokenUsageResult = await _tokenUsageValidator.ValidateAsync(request);
             if (tokenUsageResult.TokenFound == false)
             {
                 var error = "No token found.";
 
                 Logger.Error(error);
-                await RaiseFailureEventAsync(error);
+                RaiseFailureEvent(error);
                 return Error(Constants.ProtectedResourceErrors.InvalidToken);
             }
 
@@ -90,29 +105,18 @@ namespace IdentityServer3.Core.Endpoints
             if (tokenResult.IsError)
             {
                 Logger.Error(tokenResult.Error);
-                await RaiseFailureEventAsync(tokenResult.Error);
+                RaiseFailureEvent(tokenResult.Error);
                 return Error(tokenResult.Error);
             }
 
             // pass scopes/claims to profile service
-            var tokenClaims = tokenResult.Claims;
-            if (!tokenClaims.Any(x=>x.Type == Constants.ClaimTypes.Subject))
-            {
-                var error = "Token contains no sub claim";
-                Logger.Error(error);
-                await RaiseFailureEventAsync(error);
-                return Error(Constants.ProtectedResourceErrors.InvalidToken);
-            }
-
-
-            var userClaims = tokenClaims.Where(x => !Constants.OidcProtocolClaimTypes.Contains(x.Type) ||
-                Constants.AuthenticateResultClaimTypes.Contains(x.Type));
+            var subject = tokenResult.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.Subject).Value;
             var scopes = tokenResult.Claims.Where(c => c.Type == Constants.ClaimTypes.Scope).Select(c => c.Value);
 
-            var payload = await _generator.ProcessAsync(userClaims, scopes, tokenResult.Client);
+            var payload = await _generator.ProcessAsync(subject, scopes);
 
             Logger.Info("End userinfo request");
-            await RaiseSuccessEventAsync();
+            RaiseSuccessEvent();
 
             return new UserInfoResult(payload);
         }
@@ -122,16 +126,16 @@ namespace IdentityServer3.Core.Endpoints
             return new ProtectedResourceErrorResult(error, description);
         }
 
-        private async Task RaiseSuccessEventAsync()
+        private void RaiseSuccessEvent()
         {
-            await _events.RaiseSuccessfulEndpointEventAsync(EventConstants.EndpointNames.UserInfo);
+            _events.RaiseSuccessfulEndpointEvent(EventConstants.EndpointNames.UserInfo);
         }
 
-        private async Task RaiseFailureEventAsync(string error)
+        private void RaiseFailureEvent(string error)
         {
             if (_options.EventsOptions.RaiseFailureEvents)
             {
-                await _events.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.UserInfo, error);
+                _events.RaiseFailureEndpointEvent(EventConstants.EndpointNames.UserInfo, error);
             }
         }
     }

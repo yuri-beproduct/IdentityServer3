@@ -15,24 +15,21 @@
  */
 
 using FluentAssertions;
-using IdentityModel;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.InMemory;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation.TokenRequest
+namespace Thinktecture.IdentityServer.Tests.Validation.TokenRequest
 {
-
+    
     public class TokenRequestValidation_Valid
     {
         const string Category = "TokenRequest Validation - General - Valid";
@@ -48,7 +45,6 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
 
             var code = new AuthorizationCode
             {
-                Subject = IdentityServerPrincipal.Create("123", "bob"),
                 Client = client,
                 RedirectUri = "https://server/cb",
                 RequestedScopes = new List<Scope>
@@ -85,7 +81,6 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
             var code = new AuthorizationCode
             {
                 Client = client,
-                Subject = IdentityServerPrincipal.Create("123", "bob"),
                 RedirectUri = "https://server/cb",
                 RequestedScopes = new List<Scope>
                 {
@@ -245,6 +240,8 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
         public async Task Valid_RefreshToken_Request()
         {
             var mock = new Mock<IUserService>();
+            mock.Setup(u => u.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult(true));
+
             var subjectClaim = new Claim(Constants.ClaimTypes.Subject, "foo");
 
             var refreshToken = new RefreshToken
@@ -282,15 +279,15 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
         public async Task Valid_RefreshToken_Request_using_Restricted_Client()
         {
             var mock = new Mock<IUserService>();
+            mock.Setup(u => u.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult(true));
+
             var subjectClaim = new Claim(Constants.ClaimTypes.Subject, "foo");
-            var resourceScope = new Claim("scope", "resource");
-            var offlineAccessScope = new Claim("scope", "offline_access");
 
             var refreshToken = new RefreshToken
             {
                 AccessToken = new Token("access_token")
                 {
-                    Claims = new List<Claim> { subjectClaim, resourceScope, offlineAccessScope },
+                    Claims = new List<Claim> { subjectClaim },
                     Client = new Client { ClientId = "roclient_restricted_refresh"}
                 },
                 
@@ -311,93 +308,6 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
             var parameters = new NameValueCollection();
             parameters.Add(Constants.TokenRequest.GrantType, "refresh_token");
             parameters.Add(Constants.TokenRequest.RefreshToken, handle);
-
-            var result = await validator.ValidateRequestAsync(parameters, client);
-
-            result.IsError.Should().BeFalse();
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
-        public async Task Valid_Code_Request_With_CodeVerifier_Plain()
-        {
-            var client = await _clients.FindClientByIdAsync("codewithproofkeyclient");
-            var store = new InMemoryAuthorizationCodeStore();
-            var options = new IdentityServerOptions();
-
-            var codeVerifier = "x".Repeat(options.InputLengthRestrictions.CodeChallengeMinLength);
-
-            var code = new AuthorizationCode
-            {
-                Client = client,
-                Subject = IdentityServerPrincipal.Create("123", "bob"),
-                RedirectUri = "https://server/cb",
-                CodeChallenge = codeVerifier.Sha256(),
-                CodeChallengeMethod = Constants.CodeChallengeMethods.Plain,
-                RequestedScopes = new List<Scope>
-                {
-                    new Scope
-                    {
-                        Name = "openid"
-                    }
-                }
-            };
-
-            await store.StoreAsync("valid", code);
-
-            var validator = Factory.CreateTokenRequestValidator(
-                authorizationCodeStore: store);
-
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.TokenRequest.GrantType, Constants.GrantTypes.AuthorizationCode);
-            parameters.Add(Constants.TokenRequest.Code, "valid");
-            parameters.Add(Constants.TokenRequest.RedirectUri, "https://server/cb");
-            parameters.Add(Constants.TokenRequest.CodeVerifier, codeVerifier);
-
-            var result = await validator.ValidateRequestAsync(parameters, client);
-
-            result.IsError.Should().BeFalse();
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
-        public async Task Valid_Code_Request_With_CodeVerifier_Sha256()
-        {
-            var client = await _clients.FindClientByIdAsync("codewithproofkeyclient");
-            var store = new InMemoryAuthorizationCodeStore();
-            var options = new IdentityServerOptions();
-
-            var codeVerifier = "x".Repeat(options.InputLengthRestrictions.CodeChallengeMinLength);
-            var codeVerifierBytes = Encoding.ASCII.GetBytes(codeVerifier);
-            var hashedBytes = codeVerifierBytes.Sha256();
-            var codeChallenge = Base64Url.Encode(hashedBytes);
-
-            var code = new AuthorizationCode
-            {
-                Client = client,
-                Subject = IdentityServerPrincipal.Create("123", "bob"),
-                RedirectUri = "https://server/cb",
-                CodeChallenge = codeChallenge.Sha256(),
-                CodeChallengeMethod = Constants.CodeChallengeMethods.SHA_256,
-                RequestedScopes = new List<Scope>
-                {
-                    new Scope
-                    {
-                        Name = "openid"
-                    }
-                }
-            };
-
-            await store.StoreAsync("valid", code);
-
-            var validator = Factory.CreateTokenRequestValidator(
-                authorizationCodeStore: store);
-
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.TokenRequest.GrantType, Constants.GrantTypes.AuthorizationCode);
-            parameters.Add(Constants.TokenRequest.Code, "valid");
-            parameters.Add(Constants.TokenRequest.RedirectUri, "https://server/cb");
-            parameters.Add(Constants.TokenRequest.CodeVerifier, codeVerifier);
 
             var result = await validator.ValidateRequestAsync(parameters, client);
 

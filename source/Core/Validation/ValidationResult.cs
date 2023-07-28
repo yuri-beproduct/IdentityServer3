@@ -14,29 +14,20 @@
  * limitations under the License.
  */
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
-    /// Minimal validation result class (base-class for more complext validation results)
+    /// Models the validation result of authorize and token requests.
     /// </summary>
     public class ValidationResult
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ValidationResult"/> class.
-        /// </summary>
-        public ValidationResult()
-        {
-            IsError = true;
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the validation was successful.
+        /// Gets or sets a value indicating whether this instance is error.
         /// </summary>
         /// <value>
-        ///   <c>true</c> if the validation is failed; otherwise, <c>false</c>.
+        ///   <c>true</c> if this instance is error; otherwise, <c>false</c>.
         /// </value>
         public bool IsError { get; set; }
-
         /// <summary>
         /// Gets or sets the error.
         /// </summary>
@@ -44,13 +35,21 @@ namespace IdentityServer3.Core.Validation
         /// The error.
         /// </value>
         public string Error { get; set; }
-
         /// <summary>
-        /// Gets or sets the error description.
+        /// Gets or sets the type of the error.
         /// </summary>
         /// <value>
-        /// The error description.
+        /// The type of the error.
         /// </value>
-        public string ErrorDescription { get; set; }
+        public ErrorTypes ErrorType { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ValidationResult"/> class.
+        /// </summary>
+        public ValidationResult()
+        {
+            IsError = true;
+            ErrorType = ErrorTypes.User;
+        }
     }
 }

@@ -16,7 +16,7 @@
 
 using System;
 
-namespace IdentityServer3.Core.Events
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Details class for signing certificate validation

@@ -15,14 +15,6 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.InMemory;
-using IdentityServer3.Core.ViewModels;
-using IdentityServer3.Tests.Endpoints.Setup;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.DataHandler;
 using Microsoft.Owin.Security.Google;
@@ -37,8 +29,15 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Text;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Tests.Endpoints
+namespace Thinktecture.IdentityServer.Tests.Endpoints
 {
     public class IdSvrHostTestBase
     {
@@ -47,7 +46,7 @@ namespace IdentityServer3.Tests.Endpoints
         protected IDataProtector protector;
         protected TicketDataFormat ticketFormatter;
 
-        protected MockUserService mockUserService;
+        protected Mock<InMemoryUserService> mockUserService;
         protected IdentityServerOptions options;
 
         protected IAppBuilder appBuilder;
@@ -82,12 +81,9 @@ namespace IdentityServer3.Tests.Endpoints
             {
                 appBuilder = app;
 
-                mockUserService = new MockUserService(TestUsers.Get());
-                factory.UserService = new Registration<IUserService>(resolver=>
-                {
-                    mockUserService.OwinEnvironmentService = resolver.Resolve<OwinEnvironmentService>();
-                    return mockUserService;
-                });
+                mockUserService = new Mock<InMemoryUserService>(TestUsers.Get());
+                mockUserService.CallBase = true;
+                factory.UserService = new Registration<IUserService>((resolver) => mockUserService.Object);
 
                 options = TestIdentityServerOptions.Create();
                 options.Factory = factory;

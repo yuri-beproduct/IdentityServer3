@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Configuration;
 using System.Collections.Specialized;
 using System.Security.Claims;
+using Thinktecture.IdentityServer.Core.Configuration;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     /// <summary>
     /// Base class for a validate authorize or token request
@@ -41,14 +41,6 @@ namespace IdentityServer3.Core.Validation
         /// </value>
         public ClaimsPrincipal Subject { get; set; }
 
-        /// <summary>
-        /// Gets or sets the session identifier.
-        /// </summary>
-        /// <value>
-        /// The session identifier.
-        /// </value>
-        public string SessionId { get; set; }
-        
         /// <summary>
         /// Gets or sets the identity server options.
         /// </summary>

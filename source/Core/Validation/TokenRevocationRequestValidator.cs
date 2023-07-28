@@ -14,16 +14,26 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Models;
 using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     internal class TokenRevocationRequestValidator
     {
+        private readonly ITokenHandleStore _tokenHandles;
+        private readonly IRefreshTokenStore _refreshTokens;
+
+        public TokenRevocationRequestValidator(ITokenHandleStore tokenHandles, IRefreshTokenStore refreshTokens)
+        {
+            _tokenHandles = tokenHandles;
+            _refreshTokens = refreshTokens;
+        }
+
         public Task<TokenRevocationRequestValidationResult> ValidateRequestAsync(NameValueCollection parameters, Client client)
         {
             if (parameters == null) throw new ArgumentNullException("parameters");
@@ -44,7 +54,6 @@ namespace IdentityServer3.Core.Validation
 
             var result = new TokenRevocationRequestValidationResult
             {
-                IsError = false,
                 Token = token
             };
 

@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using System;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Core.ResponseHandling
+namespace Thinktecture.IdentityServer.Core.ResponseHandling
 {
     internal class UserInfoResponseGenerator
     {
@@ -39,40 +39,24 @@ namespace IdentityServer3.Core.ResponseHandling
             _scopes = scopes;
         }
 
-        public async Task<Dictionary<string, object>> ProcessAsync(IEnumerable<Claim> userClaims, IEnumerable<string> scopes, Client client)
+        public async Task<Dictionary<string, object>> ProcessAsync(string subject, IEnumerable<string> scopes)
         {
             Logger.Info("Creating userinfo response");
             var profileData = new Dictionary<string, object>();
-
-            var principal = Principal.Create("UserInfo", userClaims.ToArray());
+            
+            var requestedClaimTypes = await GetRequestedClaimTypesAsync(scopes);
+            var principal = Principal.Create("UserInfo", new Claim("sub", subject));
 
             IEnumerable<Claim> profileClaims;
-
-            var requestedClaimTypes = await GetRequestedClaimTypesAsync(scopes);
             if (requestedClaimTypes.IncludeAllClaims)
             {
                 Logger.InfoFormat("Requested claim types: all");
-
-                var context = new ProfileDataRequestContext(
-                    principal, 
-                    client, 
-                    Constants.ProfileDataCallers.UserInfoEndpoint);
-
-                await _users.GetProfileDataAsync(context);
-                profileClaims = context.IssuedClaims;
+                profileClaims = await _users.GetProfileDataAsync(principal);
             }
             else
             {
                 Logger.InfoFormat("Requested claim types: {0}", requestedClaimTypes.ClaimTypes.ToSpaceSeparatedString());
-
-                var context = new ProfileDataRequestContext(
-                    principal,
-                    client,
-                    Constants.ProfileDataCallers.UserInfoEndpoint,
-                    requestedClaimTypes.ClaimTypes);
-
-                await _users.GetProfileDataAsync(context);
-                profileClaims = context.IssuedClaims;
+                profileClaims = await _users.GetProfileDataAsync(principal, requestedClaimTypes.ClaimTypes);
             }
             
             if (profileClaims != null)

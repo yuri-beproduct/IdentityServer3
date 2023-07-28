@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Extensions;
 using Microsoft.Owin;
 using System;
 using System.ComponentModel;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Extensions;
 
 #pragma warning disable 1591
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class SessionCookie
@@ -38,22 +38,19 @@ namespace IdentityServer3.Core.Configuration.Hosting
 
         public virtual void IssueSessionId(bool? persistent, DateTimeOffset? expires = null)
         {
-            context.Response.Cookies.Append(
-                GetCookieName(), CryptoRandom.CreateUniqueId(), 
+            context.Response.AppendCookie(
+                GetCookieName(), CryptoRandom.CreateUniqueId(),
                 CreateCookieOptions(persistent, expires));
         }
 
         private Microsoft.Owin.CookieOptions CreateCookieOptions(bool? persistent, DateTimeOffset? expires = null)
         {
             var path = context.Request.Environment.GetIdentityServerBasePath().CleanUrlPath();
-            var secure =
-                identityServerOptions.AuthenticationOptions.CookieOptions.SecureMode == CookieSecureMode.Always ||
-                context.Request.Scheme == Uri.UriSchemeHttps;
 
             var options = new Microsoft.Owin.CookieOptions
             {
                 HttpOnly = false,
-                Secure = secure,
+                Secure = context.Request.IsSecure,
                 Path = path
             };
 
@@ -90,9 +87,9 @@ namespace IdentityServer3.Core.Configuration.Hosting
         {
             var options = CreateCookieOptions(false);
             options.Expires = DateTimeHelper.UtcNow.AddYears(-1);
-            
+
             var name = GetCookieName();
-            context.Response.Cookies.Append(name, ".", options);
+            context.Response.AppendCookie(name, ".", options);
         }
     }
 }

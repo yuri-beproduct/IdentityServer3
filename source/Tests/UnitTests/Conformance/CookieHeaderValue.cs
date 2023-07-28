@@ -19,7 +19,7 @@ using System.Collections.Specialized;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 
-namespace IdentityServer3.Tests.Conformance
+namespace Thinktecture.IdentityServer.Tests.Conformance
 {
     public class CookieHeaderValue
     {

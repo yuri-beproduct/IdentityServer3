@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Results
+namespace Thinktecture.IdentityServer.Core.Results
 {
     internal class TokenResult : IHttpActionResult
     {
         private readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
-        private readonly static JsonSerializer Serializer = new JsonSerializer
+        private readonly static JsonMediaTypeFormatter Formatter = new JsonMediaTypeFormatter
         {
-            DefaultValueHandling = DefaultValueHandling.Ignore,
-            NullValueHandling = NullValueHandling.Ignore
+            SerializerSettings = { DefaultValueHandling = DefaultValueHandling.Ignore }
         };
-
+        
         private readonly TokenResponse _response;
 
         public TokenResult(TokenResponse response)
@@ -58,37 +54,12 @@ namespace IdentityServer3.Core.Results
                 access_token = _response.AccessToken,
                 refresh_token = _response.RefreshToken,
                 expires_in = _response.AccessTokenLifetime,
-                token_type = _response.TokenType,
-                alg = _response.Algorithm
+                token_type = Constants.TokenTypes.Bearer
             };
-
-            var jobject = JObject.FromObject(dto, Serializer);
-
-            // custom entries
-            if (_response.Custom != null && _response.Custom.Any())
-            {
-                foreach (var item in _response.Custom)
-                {
-                    JToken token;
-                    if (jobject.TryGetValue(item.Key, out token))
-                    {
-                        throw new Exception("Item does already exist - cannot add it via a custom entry: " + item.Key);
-                    }
-
-                    if (item.Value.GetType().IsClass)
-                    {
-                        jobject.Add(new JProperty(item.Key, JToken.FromObject(item.Value)));
-                    }
-                    else
-                    {
-                        jobject.Add(new JProperty(item.Key, item.Value));
-                    }
-                }
-            }
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(jobject.ToString(Formatting.None), Encoding.UTF8, "application/json")
+                Content = new ObjectContent<TokenResponseDto>(dto, Formatter)
             };
 
             Logger.Info("Returning token response.");
@@ -102,7 +73,6 @@ namespace IdentityServer3.Core.Results
             public int expires_in { get; set; }
             public string token_type { get; set; }
             public string refresh_token { get; set; }
-            public string alg { get; set; }
         }    
     }
 }

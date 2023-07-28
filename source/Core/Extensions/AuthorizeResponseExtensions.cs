@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
 using System.Collections.Specialized;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Extensions
+namespace Thinktecture.IdentityServer.Core.Extensions
 {
     internal static class AuthorizeResponseExtensions
     {
@@ -30,11 +30,6 @@ namespace IdentityServer3.Core.Extensions
                 if (response.Error.IsPresent())
                 {
                     collection.Add("error", response.Error);
-                }
-
-                if (response.ErrorDescription.IsPresent())
-                {
-                    collection.Add("error_description", response.ErrorDescription);
                 }
             }
             else

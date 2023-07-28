@@ -15,15 +15,15 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
+using Thinktecture.IdentityModel.Http;
+using Thinktecture.IdentityServer.Core.Models;
 using Xunit;
 
 
-namespace IdentityServer3.Tests.Conformance.Basic
+namespace Thinktecture.IdentityServer.Tests.Conformance.Basic
 {
     public class ClientAuthenticationTests : IdentityServerHostTest
     {
@@ -36,19 +36,15 @@ namespace IdentityServer3.Tests.Conformance.Basic
         protected override void PreInit()
         {
             host.Scopes.Add(StandardScopes.OpenId);
-            
             host.Clients.Add(new Client
             {
                 Enabled = true,
                 ClientId = client_id,
-                ClientSecrets = new List<Secret>
+                ClientSecrets = new List<ClientSecret>
                 {
-                    new Secret(client_secret.Sha256())
+                    new ClientSecret(client_secret)
                 },
-
                 Flow = Flows.AuthorizationCode,
-                AllowAccessToAllScopes = true,
-                
                 RequireConsent = false,
                 RedirectUris = new List<string>
                 {

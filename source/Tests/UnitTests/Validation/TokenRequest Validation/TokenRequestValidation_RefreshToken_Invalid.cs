@@ -15,20 +15,19 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.InMemory;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation.TokenRequest
+namespace Thinktecture.IdentityServer.Tests.Validation.TokenRequest
 {
 
     public class TokenRequestValidation_RefreshToken_Invalid
@@ -50,28 +49,6 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
             var parameters = new NameValueCollection();
             parameters.Add(Constants.TokenRequest.GrantType, "refresh_token");
             parameters.Add(Constants.TokenRequest.RefreshToken, "nonexistent");
-
-            var result = await validator.ValidateRequestAsync(parameters, client);
-
-            result.IsError.Should().BeTrue();
-            result.Error.Should().Be(Constants.TokenErrors.InvalidGrant);
-        }
-
-        [Fact]
-        [Trait("Category", Category)]
-        public async Task RefreshTokenTooLong()
-        {
-            var store = new InMemoryRefreshTokenStore();
-            var client = await _clients.FindClientByIdAsync("roclient");
-            var options = new IdentityServerOptions();
-
-            var validator = Factory.CreateTokenRequestValidator(
-                refreshTokens: store);
-            var longRefreshToken = "x".Repeat(options.InputLengthRestrictions.RefreshToken + 1);
-
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.TokenRequest.GrantType, "refresh_token");
-            parameters.Add(Constants.TokenRequest.RefreshToken, longRefreshToken);
 
             var result = await validator.ValidateRequestAsync(parameters, client);
 
@@ -183,56 +160,10 @@ namespace IdentityServer3.Tests.Validation.TokenRequest
 
         [Fact]
         [Trait("Category", Category)]
-        public async Task Client_has_no_Resource_Scope_anymore_at_RefreshToken_Request()
-        {
-            var subjectClaim = new Claim(Constants.ClaimTypes.Subject, "foo");
-            var resourceScope = new Claim("scope", "resource");
-            var offlineAccessScope = new Claim("scope", "offline_access");
-
-            var refreshToken = new RefreshToken
-            {
-                AccessToken = new Token("access_token")
-                { 
-                    Claims = new List<Claim> { subjectClaim, resourceScope, offlineAccessScope },
-
-                    Client = new Client
-                    {
-                        ClientId = "roclient_offline_only",
-                    },
-                },
-                LifeTime = 600,
-                CreationTime = DateTimeOffset.UtcNow
-            };
-            var handle = Guid.NewGuid().ToString();
-
-            var store = new InMemoryRefreshTokenStore();
-            await store.StoreAsync(handle, refreshToken);
-
-            var client = await _clients.FindClientByIdAsync("roclient_offline_only");
-
-            var validator = Factory.CreateTokenRequestValidator(
-                refreshTokens: store);
-
-            var parameters = new NameValueCollection();
-            parameters.Add(Constants.TokenRequest.GrantType, "refresh_token");
-            parameters.Add(Constants.TokenRequest.RefreshToken, handle);
-
-            var result = await validator.ValidateRequestAsync(parameters, client);
-
-            result.IsError.Should().BeTrue();
-            result.Error.Should().Be(Constants.TokenErrors.InvalidGrant);
-        }
-
-
-        [Fact]
-        [Trait("Category", Category)]
         public async Task RefreshToken_Request_with_disabled_User()
         {
             var mock = new Mock<IUserService>();
-            mock.Setup(u => u.IsActiveAsync(It.IsAny<IsActiveContext>())).Callback<IsActiveContext>(ctx =>
-            {
-                ctx.IsActive = false;
-            }).Returns(Task.FromResult(0));
+            mock.Setup(u => u.IsActiveAsync(It.IsAny<ClaimsPrincipal>())).Returns(Task.FromResult(false));
 
             var subjectClaim = new Claim(Constants.ClaimTypes.Subject, "foo");
 

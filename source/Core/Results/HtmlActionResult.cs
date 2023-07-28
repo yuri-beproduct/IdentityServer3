@@ -20,7 +20,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 
-namespace IdentityServer3.Core.Results
+namespace Thinktecture.IdentityServer.Core.Results
 {
     internal abstract class HtmlActionResult : IHttpActionResult
     {

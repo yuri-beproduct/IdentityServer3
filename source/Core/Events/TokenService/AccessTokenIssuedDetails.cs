@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Models;
+using Thinktecture.IdentityServer.Core.Models;
 
-namespace IdentityServer3.Core.Events
+namespace Thinktecture.IdentityServer.Core.Events
 {
     /// <summary>
     /// Details class for access token issued events
@@ -30,13 +30,5 @@ namespace IdentityServer3.Core.Events
         /// The type of the token.
         /// </value>
         public AccessTokenType TokenType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the type of the reference token handle.
-        /// </summary>
-        /// <value>
-        /// The type of the token.
-        /// </value>
-        public string ReferenceTokenHandle { get; set; }
     }
 }

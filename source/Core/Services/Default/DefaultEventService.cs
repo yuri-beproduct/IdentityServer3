@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Logging;
 using System;
-using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Logging;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     /// <summary>
     /// Default implementation of the event service. Write events raised to the log.
@@ -29,21 +28,19 @@ namespace IdentityServer3.Core.Services.Default
         /// <summary>
         /// The logger
         /// </summary>
-        private static readonly ILog Logger = LogProvider.GetLogger("Events");
+        protected static readonly ILog Logger = LogProvider.GetLogger("Events");
 
         /// <summary>
         /// Raises the specified event.
         /// </summary>
         /// <param name="evt">The event.</param>
         /// <exception cref="System.ArgumentNullException">evt</exception>
-        public virtual Task RaiseAsync<T>(Event<T> evt)
+        public virtual void Raise<T>(Event<T> evt)
         {
             if (evt == null) throw new ArgumentNullException("evt");
             
             var json = LogSerializer.Serialize(evt);
             Logger.Info(json);
-
-            return Task.FromResult(0);
         }
     }
 }

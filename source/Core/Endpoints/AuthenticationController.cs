@@ -14,29 +14,34 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Events;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Resources;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.ViewModels;
 using Microsoft.Owin;
 using Newtonsoft.Json;
 using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityModel.Extensions;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Events;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Resources;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Endpoints
+#pragma warning disable 1591
+
+namespace Thinktecture.IdentityServer.Core.Endpoints
 {
+    [EditorBrowsable(EditorBrowsableState.Never)]
     [ErrorPageFilter]
     [SecurityHeaders]
     [NoCache]
@@ -44,7 +49,7 @@ namespace IdentityServer3.Core.Endpoints
     [HostAuthentication(Constants.PrimaryAuthenticationType)]
     internal class AuthenticationController : ApiController
     {
-        public const int MaxSignInMessageLength = 100;
+        public const int MaxInputParamLength = 100;
 
         private readonly static ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -97,11 +102,11 @@ namespace IdentityServer3.Core.Endpoints
 
             if (signin.IsMissing())
             {
-                Logger.Info("No signin id passed");
+                Logger.Error("No signin id passed");
                 return HandleNoSignin();
             }
 
-            if (signin.Length > MaxSignInMessageLength)
+            if (signin.Length > MaxInputParamLength)
             {
                 Logger.Error("Signin parameter passed was larger than max length");
                 return RenderErrorPage();
@@ -110,47 +115,35 @@ namespace IdentityServer3.Core.Endpoints
             var signInMessage = signInMessageCookie.Read(signin);
             if (signInMessage == null)
             {
-                Logger.Info("No cookie matching signin id found");
+                Logger.Error("No cookie matching signin id found");
                 return HandleNoSignin();
             }
 
             Logger.DebugFormat("signin message passed to login: {0}", JsonConvert.SerializeObject(signInMessage, Formatting.Indented));
 
-            var preAuthContext = new PreAuthenticationContext { SignInMessage = signInMessage };
-            await userService.PreAuthenticateAsync(preAuthContext);
-
-            var authResult = preAuthContext.AuthenticateResult;
+            var authResult = await userService.PreAuthenticateAsync(signInMessage);
             if (authResult != null)
             {
                 if (authResult.IsError)
                 {
                     Logger.WarnFormat("user service returned an error message: {0}", authResult.ErrorMessage);
-
-                    await eventService.RaisePreLoginFailureEventAsync(signin, signInMessage, authResult.ErrorMessage);
-
-                    if (preAuthContext.ShowLoginPageOnErrorResult)
-                    {
-                        Logger.Debug("ShowLoginPageOnErrorResult set to true, showing login page with error");
-                        return await RenderLoginPage(signInMessage, signin, authResult.ErrorMessage);
-                    }
-                    else
-                    {
-                        Logger.Debug("ShowLoginPageOnErrorResult set to false, showing error page with error");
-                        return RenderErrorPage(authResult.ErrorMessage);
-                    }
+                    
+                    eventService.RaisePreLoginFailureEvent(signin, signInMessage, authResult.ErrorMessage);
+                    
+                    return RenderErrorPage(authResult.ErrorMessage);
                 }
 
                 Logger.Info("user service returned a login result");
 
-                await eventService.RaisePreLoginSuccessEventAsync(signin, signInMessage, authResult);
-
-                return await SignInAndRedirectAsync(signInMessage, signin, authResult);
+                eventService.RaisePreLoginSuccessEvent(signin, signInMessage, authResult);
+                
+                return SignInAndRedirect(signInMessage, signin, authResult);
             }
 
             if (signInMessage.IdP.IsPresent())
             {
                 Logger.InfoFormat("identity provider requested, redirecting to: {0}", signInMessage.IdP);
-                return await LoginExternal(signin, signInMessage.IdP);
+                return Redirect(context.GetExternalProviderLoginUrl(signInMessage.IdP, signin));
             }
 
             return await RenderLoginPage(signInMessage, signin);
@@ -171,11 +164,11 @@ namespace IdentityServer3.Core.Endpoints
 
             if (signin.IsMissing())
             {
-                Logger.Info("No signin id passed");
+                Logger.Error("No signin id passed");
                 return HandleNoSignin();
             }
 
-            if (signin.Length > MaxSignInMessageLength)
+            if (signin.Length > MaxInputParamLength)
             {
                 Logger.Error("Signin parameter passed was larger than max length");
                 return RenderErrorPage();
@@ -184,7 +177,7 @@ namespace IdentityServer3.Core.Endpoints
             var signInMessage = signInMessageCookie.Read(signin);
             if (signInMessage == null)
             {
-                Logger.Info("No cookie matching signin id found");
+                Logger.Error("No cookie matching signin id found");
                 return HandleNoSignin();
             }
 
@@ -218,28 +211,19 @@ namespace IdentityServer3.Core.Endpoints
                 return await RenderLoginPage(signInMessage, signin, ModelState.GetError(), model.Username, model.RememberMe == true);
             }
 
-            if (model.Username.Length > options.InputLengthRestrictions.UserName || model.Password.Length > options.InputLengthRestrictions.Password)
+            if (model.Username.Length > MaxInputParamLength || model.Password.Length > MaxInputParamLength)
             {
                 Logger.Error("username or password submitted beyond allowed length");
                 return await RenderLoginPage(signInMessage, signin);
             }
-
-            var authenticationContext = new LocalAuthenticationContext
-            {
-                UserName = model.Username.Trim(),
-                Password = model.Password.Trim(),
-                SignInMessage = signInMessage
-            };
-
-            await userService.AuthenticateLocalAsync(authenticationContext);
             
-            var authResult = authenticationContext.AuthenticateResult;
+            var authResult = await userService.AuthenticateLocalAsync(model.Username, model.Password, signInMessage);
             if (authResult == null)
             {
                 Logger.WarnFormat("user service indicated incorrect username or password for username: {0}", model.Username);
                 
                 var errorMessage = localizationService.GetMessage(MessageIds.InvalidUsernameOrPassword);
-                await eventService.RaiseLocalLoginFailureEventAsync(model.Username, signin, signInMessage, errorMessage);
+                eventService.RaiseLocalLoginFailureEvent(model.Username, signin, signInMessage, errorMessage);
                 
                 return await RenderLoginPage(signInMessage, signin, errorMessage, model.Username, model.RememberMe == true);
             }
@@ -248,18 +232,18 @@ namespace IdentityServer3.Core.Endpoints
             {
                 Logger.WarnFormat("user service returned an error message: {0}", authResult.ErrorMessage);
 
-                await eventService.RaiseLocalLoginFailureEventAsync(model.Username, signin, signInMessage, authResult.ErrorMessage);
+                eventService.RaiseLocalLoginFailureEvent(model.Username, signin, signInMessage, authResult.ErrorMessage);
                 
                 return await RenderLoginPage(signInMessage, signin, authResult.ErrorMessage, model.Username, model.RememberMe == true);
             }
 
             Logger.Info("Login credentials successfully validated by user service");
 
-            await eventService.RaiseLocalLoginSuccessEventAsync(model.Username, signin, signInMessage, authResult);
+            eventService.RaiseLocalLoginSuccessEvent(model.Username, signin, signInMessage, authResult);
 
             lastUserNameCookie.SetValue(model.Username);
 
-            return await SignInAndRedirectAsync(signInMessage, signin, authResult, model.RememberMe);
+            return SignInAndRedirect(signInMessage, signin, authResult, model.RememberMe);
         }
 
         [Route(Constants.RoutePaths.LoginExternal, Name = Constants.RouteNames.LoginExternal)]
@@ -274,7 +258,7 @@ namespace IdentityServer3.Core.Endpoints
                 return RenderErrorPage(localizationService.GetMessage(MessageIds.NoExternalProvider));
             }
 
-            if (provider.Length > options.InputLengthRestrictions.IdentityProvider)
+            if (provider.Length > MaxInputParamLength)
             {
                 Logger.Error("Provider parameter passed was larger than max length");
                 return RenderErrorPage();
@@ -282,11 +266,11 @@ namespace IdentityServer3.Core.Endpoints
 
             if (signin.IsMissing())
             {
-                Logger.Info("No signin id passed");
+                Logger.Error("No signin id passed");
                 return HandleNoSignin();
             }
 
-            if (signin.Length > MaxSignInMessageLength)
+            if (signin.Length > MaxInputParamLength)
             {
                 Logger.Error("Signin parameter passed was larger than max length");
                 return RenderErrorPage();
@@ -295,7 +279,7 @@ namespace IdentityServer3.Core.Endpoints
             var signInMessage = signInMessageCookie.Read(signin);
             if (signInMessage == null)
             {
-                Logger.Info("No cookie matching signin id found");
+                Logger.Error("No cookie matching signin id found");
                 return HandleNoSignin();
             }
 
@@ -303,7 +287,7 @@ namespace IdentityServer3.Core.Endpoints
             {
                 var msg = String.Format("External login error: provider {0} not allowed for client: {1}", provider, signInMessage.ClientId);
                 Logger.ErrorFormat(msg);
-                await eventService.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.Authenticate, msg);
+                eventService.RaiseFailureEndpointEvent(EventConstants.EndpointNames.Authenticate, msg);
                 return RenderErrorPage();
             }
             
@@ -311,7 +295,7 @@ namespace IdentityServer3.Core.Endpoints
             {
                 var msg = String.Format("External login error: provider requested {0} is not a configured external provider", provider);
                 Logger.ErrorFormat(msg);
-                await eventService.RaiseFailureEndpointEventAsync(EventConstants.EndpointNames.Authenticate, msg);
+                eventService.RaiseFailureEndpointEvent(EventConstants.EndpointNames.Authenticate, msg);
                 return RenderErrorPage();
             }
 
@@ -338,24 +322,24 @@ namespace IdentityServer3.Core.Endpoints
             
             if (error.IsPresent())
             {
-                if (error.Length > options.InputLengthRestrictions.ExternalError) error = error.Substring(0, options.InputLengthRestrictions.ExternalError);
+                if (error.Length > MaxInputParamLength) error = error.Substring(0, MaxInputParamLength);
 
                 Logger.ErrorFormat("External identity provider returned error: {0}", error);
-                await eventService.RaiseExternalLoginErrorEventAsync(error);
+                eventService.RaiseExternalLoginErrorEvent(error);
                 return RenderErrorPage(String.Format(localizationService.GetMessage(MessageIds.ExternalProviderError), error));
             }
 
             var signInId = await context.GetSignInIdFromExternalProvider();
             if (signInId.IsMissing())
             {
-                Logger.Info("No signin id passed");
+                Logger.Error("No signin id passed");
                 return HandleNoSignin();
             }
 
             var signInMessage = signInMessageCookie.Read(signInId);
             if (signInMessage == null)
             {
-                Logger.Info("No cookie matching signin id found");
+                Logger.Error("No cookie matching signin id found");
                 return HandleNoSignin();
             }
 
@@ -376,21 +360,13 @@ namespace IdentityServer3.Core.Endpoints
 
             Logger.InfoFormat("external user provider: {0}, provider ID: {1}", externalIdentity.Provider, externalIdentity.ProviderId);
 
-            var externalContext = new ExternalAuthenticationContext
-            {
-                ExternalIdentity = externalIdentity,
-                SignInMessage = signInMessage
-            };
-
-            await userService.AuthenticateExternalAsync(externalContext);
-            
-            var authResult = externalContext.AuthenticateResult;
+            var authResult = await userService.AuthenticateExternalAsync(externalIdentity, signInMessage);
             if (authResult == null)
             {
                 Logger.Warn("user service failed to authenticate external identity");
                 
                 var msg = localizationService.GetMessage(MessageIds.NoMatchingExternalAccount);
-                await eventService.RaiseExternalLoginFailureEventAsync(externalIdentity, signInId, signInMessage, msg);
+                eventService.RaiseExternalLoginFailureEvent(externalIdentity, signInId, signInMessage, msg);
                 
                 return await RenderLoginPage(signInMessage, signInId, msg);
             }
@@ -399,16 +375,16 @@ namespace IdentityServer3.Core.Endpoints
             {
                 Logger.WarnFormat("user service returned error message: {0}", authResult.ErrorMessage);
 
-                await eventService.RaiseExternalLoginFailureEventAsync(externalIdentity, signInId, signInMessage, authResult.ErrorMessage);
+                eventService.RaiseExternalLoginFailureEvent(externalIdentity, signInId, signInMessage, authResult.ErrorMessage);
                 
                 return await RenderLoginPage(signInMessage, signInId, authResult.ErrorMessage);
             }
 
             Logger.Info("External identity successfully validated by user service");
 
-            await eventService.RaiseExternalLoginSuccessEventAsync(externalIdentity, signInId, signInMessage, authResult);
+            eventService.RaiseExternalLoginSuccessEvent(externalIdentity, signInId, signInMessage, authResult);
 
-            return await SignInAndRedirectAsync(signInMessage, signInId, authResult);
+            return SignInAndRedirect(signInMessage, signInId, authResult);
         }
 
         [Route(Constants.RoutePaths.ResumeLoginFromRedirect, Name = Constants.RouteNames.ResumeLoginFromRedirect)]
@@ -423,7 +399,7 @@ namespace IdentityServer3.Core.Endpoints
                 return RenderErrorPage();
             }
 
-            if (resume.Length > MaxSignInMessageLength)
+            if (resume.Length > MaxInputParamLength)
             {
                 Logger.Error("resumeId length longer than allowed length");
                 return RenderErrorPage();
@@ -458,61 +434,63 @@ namespace IdentityServer3.Core.Endpoints
                 return RenderErrorPage();
             }
 
+            // check to see if the partial login has all the claim types needed to login
             AuthenticateResult result = null;
+            if (Constants.AuthenticateResultClaimTypes.All(claimType => user.HasClaim(claimType)))
+            {
+                Logger.Info("Authentication claims found -- logging user in");
+                
+                // the user/subject was known, so pass thru (without the redirect claims)
+                if (user.HasClaim(Constants.ClaimTypes.PartialLoginReturnUrl))
+                {
+                    user.RemoveClaim(user.FindFirst(Constants.ClaimTypes.PartialLoginReturnUrl));
+                }
+                if (user.HasClaim(Constants.ClaimTypes.ExternalProviderUserId))
+                {
+                    user.RemoveClaim(user.FindFirst(Constants.ClaimTypes.ExternalProviderUserId));
+                }
+                if (user.HasClaim(GetClaimTypeForResumeId(resume)))
+                {
+                    user.RemoveClaim(user.FindFirst(GetClaimTypeForResumeId(resume)));
+                }
+                
+                result = new AuthenticateResult(new ClaimsPrincipal(user));
 
-            // determine which return path the user is taking -- are they coming from
-            // a ExternalProvider partial logon, or not
-            var externalProviderClaim = user.FindFirst(Constants.ClaimTypes.ExternalProviderUserId);
-
-            // cleanup the claims from the partial login
-            if (user.HasClaim(c => c.Type == Constants.ClaimTypes.PartialLoginRestartUrl))
-            {
-                user.RemoveClaim(user.FindFirst(Constants.ClaimTypes.PartialLoginRestartUrl));
+                eventService.RaisePartialLoginCompleteEvent(user, signInId, signInMessage);
             }
-            if (user.HasClaim(c => c.Type == Constants.ClaimTypes.PartialLoginReturnUrl))
+            else
             {
-                user.RemoveClaim(user.FindFirst(Constants.ClaimTypes.PartialLoginReturnUrl));
-            }
-            if (user.HasClaim(c => c.Type == Constants.ClaimTypes.ExternalProviderUserId))
-            {
-                user.RemoveClaim(user.FindFirst(Constants.ClaimTypes.ExternalProviderUserId));
-            }
-            if (user.HasClaim(c => c.Type == GetClaimTypeForResumeId(resume)))
-            {
-                user.RemoveClaim(user.FindFirst(GetClaimTypeForResumeId(resume)));
-            }
-
-            if (externalProviderClaim != null)
-            {
-                Logger.Info("using ExternalProviderUserId to call AuthenticateExternalAsync");
+                Logger.Info("Authentication claims not found -- looking for ExternalProviderUserId to call AuthenticateExternalAsync");
+                
+                // the user was not known, we need to re-execute AuthenticateExternalAsync
+                // to obtain a subject to proceed
+                var externalProviderClaim = user.FindFirst(Constants.ClaimTypes.ExternalProviderUserId);
+                if (externalProviderClaim == null)
+                {
+                    Logger.Error("No ExternalProviderUserId claim found -- rendering error page");
+                    return RenderErrorPage();
+                }
 
                 var provider = externalProviderClaim.Issuer;
                 var providerId = externalProviderClaim.Value;
-                var externalIdentity = new ExternalIdentity
+                var externalId = new ExternalIdentity
                 {
                     Provider = provider,
                     ProviderId = providerId,
                     Claims = user.Claims
                 };
 
-                Logger.InfoFormat("external user provider: {0}, provider ID: {1}", externalIdentity.Provider, externalIdentity.ProviderId);
+                Logger.InfoFormat("external user provider: {0}, provider ID: {1}", externalId.Provider, externalId.ProviderId);
+                
+                result = await userService.AuthenticateExternalAsync(externalId, signInMessage);
 
-                var externalContext = new ExternalAuthenticationContext
-                {
-                    ExternalIdentity = externalIdentity,
-                    SignInMessage = signInMessage
-                };
-
-                await userService.AuthenticateExternalAsync(externalContext);
-
-                result = externalContext.AuthenticateResult;
                 if (result == null)
                 {
                     Logger.Warn("user service failed to authenticate external identity");
-
+                    
                     var msg = localizationService.GetMessage(MessageIds.NoMatchingExternalAccount);
-                    await eventService.RaiseExternalLoginFailureEventAsync(externalIdentity, signInId, signInMessage, msg);
-
+                    eventService.RaiseExternalLoginFailureEvent(externalId, signInId, signInMessage, msg);
+                    
                     return await RenderLoginPage(signInMessage, signInId, msg);
                 }
 
@@ -520,43 +498,24 @@ namespace IdentityServer3.Core.Endpoints
                 {
                     Logger.WarnFormat("user service returned error message: {0}", result.ErrorMessage);
 
-                    await eventService.RaiseExternalLoginFailureEventAsync(externalIdentity, signInId, signInMessage, result.ErrorMessage);
-
+                    eventService.RaiseExternalLoginFailureEvent(externalId, signInId, signInMessage, result.ErrorMessage);
+                    
                     return await RenderLoginPage(signInMessage, signInId, result.ErrorMessage);
                 }
 
                 Logger.Info("External identity successfully validated by user service");
 
-                await eventService.RaiseExternalLoginSuccessEventAsync(externalIdentity, signInId, signInMessage, result);
-            }
-            else
-            {
-                // check to see if the resultant user has all the claim types needed to login
-                if (!Constants.AuthenticateResultClaimTypes.All(claimType => user.HasClaim(c => c.Type == claimType)))
-                {
-                    Logger.Error("Missing AuthenticateResultClaimTypes -- rendering error page");
-                    return RenderErrorPage();
-                }
-
-                // this is a normal partial login continuation
-                Logger.Info("Partial login resume success -- logging user in");
-
-                result = new AuthenticateResult(new ClaimsPrincipal(user));
-
-                await eventService.RaisePartialLoginCompleteEventAsync(result.User.Identities.First(), signInId, signInMessage);
+                eventService.RaiseExternalLoginSuccessEvent(externalId, signInId, signInMessage, result);
             }
 
-            // check to see if user clicked "remember me" on login page
-            bool? rememberMe = await context.GetPartialLoginRememberMeAsync();
-
-            return await SignInAndRedirectAsync(signInMessage, signInId, result, rememberMe);
+            return SignInAndRedirect(signInMessage, signInId, result);
         }
 
         [Route(Constants.RoutePaths.Logout, Name = Constants.RouteNames.LogoutPrompt)]
         [HttpGet]
         public async Task<IHttpActionResult> LogoutPrompt(string id = null)
         {
-            if (id != null && id.Length > MaxSignInMessageLength)
+            if (id != null && id.Length > MaxInputParamLength)
             {
                 Logger.Error("Logout prompt requested, but id param is longer than allowed length");
                 return RenderErrorPage();
@@ -572,36 +531,21 @@ namespace IdentityServer3.Core.Endpoints
             var sub = user.GetSubjectId();
             Logger.InfoFormat("Logout prompt for subject: {0}", sub);
 
-            if (options.AuthenticationOptions.RequireSignOutPrompt == false)
+            var message = signOutMessageCookie.Read(id);
+            if (message != null && message.ClientId.IsPresent())
             {
-                var message = signOutMessageCookie.Read(id);
-                if (message != null && message.ClientId.IsPresent())
-                {
-                    var client = await clientStore.FindClientByIdAsync(message.ClientId);
-                    if (client != null && client.RequireSignOutPrompt == true)
-                    {
-                        Logger.InfoFormat("SignOutMessage present (from client {0}) but RequireSignOutPrompt is true, rendering logout prompt", message.ClientId);
-                        return RenderLogoutPromptPage(id);
-                    }
-
-                    Logger.InfoFormat("SignOutMessage present (from client {0}) and RequireSignOutPrompt is false, performing logout", message.ClientId);
-                    return await Logout(id);
-                }
-
-                if (!this.options.AuthenticationOptions.EnableSignOutPrompt)
-                {
-                    Logger.InfoFormat("EnableSignOutPrompt set to false, performing logout");
-                    return await Logout(id);
-                }
-
-                Logger.InfoFormat("EnableSignOutPrompt set to true, rendering logout prompt");
-            }
-            else
-            {
-                Logger.InfoFormat("RequireSignOutPrompt set to true, rendering logout prompt");
+                Logger.InfoFormat("SignOutMessage present (from client {0}), performing logout", message.ClientId);
+                return await Logout(id);
             }
 
-            return RenderLogoutPromptPage(id);
+            if (!this.options.AuthenticationOptions.EnableSignOutPrompt)
+            {
+                Logger.InfoFormat("EnableSignOutPrompt set to false, performing logout");
+                return await Logout(id);
+            }
+
+            Logger.InfoFormat("EnableSignOutPrompt set to true, rendering logout prompt");
+            return RenderLogoutPromptPage();
         }
 
         [Route(Constants.RoutePaths.Logout, Name = Constants.RouteNames.Logout)]
@@ -611,7 +555,7 @@ namespace IdentityServer3.Core.Endpoints
         {
             Logger.Info("Logout endpoint submitted");
 
-            if (id != null && id.Length > MaxSignInMessageLength)
+            if (id != null && id.Length > MaxInputParamLength)
             {
                 Logger.Error("id param is longer than allowed length");
                 return RenderErrorPage();
@@ -625,21 +569,19 @@ namespace IdentityServer3.Core.Endpoints
             }
 
             Logger.Info("Clearing cookies");
-            context.QueueRemovalOfSignOutMessageCookie(id);
-            context.ClearAuthenticationCookies();
-            context.SignOutOfExternalIdP(id);
 
-            string clientId = null;
-            var message = signOutMessageCookie.Read(id);
-            if (message != null)
-            {
-                clientId = message.ClientId;
-            }
-            await context.CallUserServiceSignOutAsync(clientId);
+            sessionCookie.ClearSessionId();
+            signOutMessageCookie.Clear(id);
+            
+            ClearAuthenticationCookies();
+            SignOutOfExternalIdP();
 
             if (user != null && user.Identity.IsAuthenticated)
             {
-                await eventService.RaiseLogoutEventAsync(user, id, message);
+                await this.userService.SignOutAsync(user);
+
+                var message = signOutMessageCookie.Read(id);
+                eventService.RaiseLogoutEvent(user, id, message);
             }
 
             return await RenderLoggedOutPage(id);
@@ -670,86 +612,15 @@ namespace IdentityServer3.Core.Endpoints
             return Redirect(url);
         }
         
-        private async Task<IHttpActionResult> SignInAndRedirectAsync(SignInMessage signInMessage, string signInMessageId, AuthenticateResult authResult, bool? rememberMe = null)
+        private IHttpActionResult SignInAndRedirect(SignInMessage signInMessage, string signInMessageId, AuthenticateResult authResult, bool? rememberMe = null)
         {
-            var postAuthenActionResult = await PostAuthenticateAsync(signInMessage, signInMessageId, authResult);
-            if (postAuthenActionResult != null)
-            {
-                if (postAuthenActionResult.Item1 != null)
-                {
-                    return postAuthenActionResult.Item1;
-                }
-
-                if (postAuthenActionResult.Item2 != null)
-                {
-                    authResult = postAuthenActionResult.Item2;
-                }
-            }
-
-            // check to see if idp used to signin matches 
-            if (signInMessage.IdP.IsPresent() && 
-                authResult.IsPartialSignIn == false && 
-                authResult.HasSubject && 
-                authResult.User.GetIdentityProvider() != signInMessage.IdP)
-            {
-                // this is an error -- the user service did not set the idp to the one requested
-                Logger.ErrorFormat("IdP requested was: {0}, but the user service issued signin for IdP: {1}", signInMessage.IdP, authResult.User.GetIdentityProvider());
-                return RenderErrorPage();
-            }
-
-            ClearAuthenticationCookiesForNewSignIn(authResult);
+            ClearAuthenticationCookies();
             IssueAuthenticationCookie(signInMessageId, authResult, rememberMe);
 
             var redirectUrl = GetRedirectUrl(signInMessage, authResult);
             Logger.InfoFormat("redirecting to: {0}", redirectUrl);
             return Redirect(redirectUrl);
         }
-
-        private async Task<Tuple<IHttpActionResult, AuthenticateResult>> PostAuthenticateAsync(SignInMessage signInMessage, string signInMessageId, AuthenticateResult result)
-        {
-            if (result.IsPartialSignIn == false)
-            {
-                Logger.Info("Calling PostAuthenticateAsync on the user service");
-
-                var ctx = new PostAuthenticationContext
-                {
-                    SignInMessage = signInMessage,
-                    AuthenticateResult = result
-                };
-                await userService.PostAuthenticateAsync(ctx);
-
-                var authResult = ctx.AuthenticateResult;
-                if (authResult == null)
-                {
-                    Logger.Error("user service PostAuthenticateAsync returned a null AuthenticateResult");
-                    return new Tuple<IHttpActionResult,AuthenticateResult>(RenderErrorPage(), null);
-                }
-
-                if (authResult.IsError)
-                {
-                    Logger.WarnFormat("user service PostAuthenticateAsync returned an error message: {0}", authResult.ErrorMessage);
-                    if (ctx.ShowLoginPageOnErrorResult)
-                    {
-                        Logger.Debug("ShowLoginPageOnErrorResult set to true, showing login page with error");
-                        return new Tuple<IHttpActionResult, AuthenticateResult>(await RenderLoginPage(signInMessage, signInMessageId, authResult.ErrorMessage), null);
-                    }
-                    else
-                    {
-                        Logger.Debug("ShowLoginPageOnErrorResult set to false, showing error page with error");
-                        return new Tuple<IHttpActionResult, AuthenticateResult>(RenderErrorPage(authResult.ErrorMessage), null);
-                    }
-                }
-
-                if (result != authResult)
-                {
-                    result = authResult;
-                    Logger.Info("user service PostAuthenticateAsync returned a different AuthenticateResult");
-                }
-            }
-            
-            return new Tuple<IHttpActionResult, AuthenticateResult>(null, result);
-        }
-
 
         private void IssueAuthenticationCookie(string signInMessageId, AuthenticateResult authResult, bool? rememberMe = null)
         {
@@ -779,10 +650,6 @@ namespace IdentityServer3.Core.Endpoints
                 var resumeLoginClaim = new Claim(Constants.ClaimTypes.PartialLoginReturnUrl, resumeLoginUrl);
                 id.AddClaim(resumeLoginClaim);
                 id.AddClaim(new Claim(GetClaimTypeForResumeId(resumeId), signInMessageId));
-
-                // add url to start login process over again (which re-triggers preauthenticate)
-                var restartUrl = context.GetPartialLoginRestartUrl(signInMessageId);
-                id.AddClaim(new Claim(Constants.ClaimTypes.PartialLoginRestartUrl, restartUrl));
             }
             else
             {
@@ -806,14 +673,6 @@ namespace IdentityServer3.Core.Endpoints
                         var expires = DateTimeHelper.UtcNow.Add(options.AuthenticationOptions.CookieOptions.RememberMeDuration);
                         props.ExpiresUtc = new DateTimeOffset(expires);
                     }
-                }
-            }
-            else
-            {
-                if (rememberMe != null)
-                {
-                    // if rememberme set, then store for later use once we need to issue login cookie
-                    props.Dictionary.Add(Constants.Authentication.PartialLoginRememberMe, rememberMe.Value ? "true" : "false");
                 }
             }
 
@@ -847,16 +706,27 @@ namespace IdentityServer3.Core.Endpoints
             }
         }
 
-        private void ClearAuthenticationCookiesForNewSignIn(AuthenticateResult authResult)
+        private void ClearAuthenticationCookies()
         {
-            // on a partial sign-in, preserve the existing primary sign-in
-            if (!authResult.IsPartialSignIn)
-            {
-                context.Authentication.SignOut(Constants.PrimaryAuthenticationType);
-            }
             context.Authentication.SignOut(
+                Constants.PrimaryAuthenticationType,
                 Constants.ExternalAuthenticationType,
                 Constants.PartialSignInAuthenticationType);
+        }
+
+        private void SignOutOfExternalIdP()
+        {
+            // look for idp claim other than IdSvr
+            // if present, then signout of it
+            var user = User as ClaimsPrincipal;
+            if (user != null && user.Identity.IsAuthenticated)
+            {
+                var idp = user.GetIdentityProvider();
+                if (idp != Constants.BuiltInIdentityProvider)
+                {
+                    context.Authentication.SignOut(idp);
+                }
+            }
         }
 
         async Task<bool> IsLocalLoginAllowedForClient(SignInMessage message)
@@ -886,7 +756,6 @@ namespace IdentityServer3.Core.Endpoints
             var providers = context.GetExternalAuthenticationProviders(idpRestrictions);
             var providerLinks = context.GetLinksFromProviders(providers, signInMessageId);
             var visibleLinks = providerLinks.FilterHiddenLinks();
-            var client = await clientStore.FindClientByIdAsync(message.ClientId);
 
             if (errorMessage != null)
             {
@@ -949,10 +818,7 @@ namespace IdentityServer3.Core.Endpoints
                 CurrentUser = context.GetCurrentUserDisplayName(),
                 LogoutUrl = context.GetIdentityServerLogoutUrl(),
                 AntiForgery = antiForgeryToken.GetAntiForgeryToken(),
-                Username = username,
-                ClientName = client != null ? client.ClientName : null,
-                ClientUrl = client != null ? client.ClientUri : null,
-                ClientLogoUrl = client != null ? client.LogoUri : null
+                Username = username
             };
 
             return new LoginActionResult(viewService, loginModel, message);
@@ -982,25 +848,18 @@ namespace IdentityServer3.Core.Endpoints
             return username;
         }
 
-        private IHttpActionResult RenderLogoutPromptPage(string id)
+        private IHttpActionResult RenderLogoutPromptPage()
         {
-            var logout_url = context.GetIdentityServerLogoutUrl();
-            if (id.IsPresent())
-            {
-                logout_url += "?id=" + id;
-            }
-
             var logoutModel = new LogoutViewModel
             {
                 SiteName = options.SiteName,
                 SiteUrl = context.GetIdentityServerBaseUrl(),
                 CurrentUser = context.GetCurrentUserDisplayName(),
-                LogoutUrl = logout_url,
+                LogoutUrl = context.GetIdentityServerLogoutUrl(),
                 AntiForgery = antiForgeryToken.GetAntiForgeryToken(),
             };
 
-            var message = signOutMessageCookie.Read(id);
-            return new LogoutActionResult(viewService, logoutModel, message);
+            return new LogoutActionResult(viewService, logoutModel);
         }
 
         private async Task<IHttpActionResult> RenderLoggedOutPage(string id)
@@ -1008,7 +867,7 @@ namespace IdentityServer3.Core.Endpoints
             Logger.Info("rendering logged out page");
 
             var baseUrl = context.GetIdentityServerBaseUrl();
-            var iframeUrls = options.RenderProtocolUrls(baseUrl, sessionCookie.GetSessionId());
+            var iframeUrls = options.RenderProtocolUrls(baseUrl);
 
             var message = signOutMessageCookie.Read(id);
             var redirectUrl = message != null ? message.ReturnUrl : null;
@@ -1024,7 +883,7 @@ namespace IdentityServer3.Core.Endpoints
                 AutoRedirect = options.AuthenticationOptions.EnablePostSignOutAutoRedirect,
                 AutoRedirectDelay = options.AuthenticationOptions.PostSignOutAutoRedirectDelay
             };
-            return new LoggedOutActionResult(viewService, loggedOutModel, message);
+            return new LoggedOutActionResult(viewService, loggedOutModel);
         }
 
         private IHttpActionResult RenderErrorPage(string message = null)

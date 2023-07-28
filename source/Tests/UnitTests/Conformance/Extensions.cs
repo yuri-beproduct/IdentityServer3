@@ -15,11 +15,6 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.ViewModels;
 using Microsoft.Owin;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -36,23 +31,21 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Tests.Conformance
+namespace Thinktecture.IdentityServer.Tests.Conformance
 {
     public static class Extensions
     {
-        public static NameValueCollection RequestAuthorizationCode(
-            this IdentityServerHost host,
-            string client_id,
-            string redirect_uri,
-            string scope,
-            string nonce = null,
-            string code_challenge = null,
-            string code_challenge_method = null)
+        public static NameValueCollection RequestAuthorizationCode(this IdentityServerHost host, string client_id, string redirect_uri, string scope, string nonce = null)
         {
             var state = Guid.NewGuid().ToString();
 
-            var url = host.GetAuthorizeUrl(client_id, redirect_uri, scope, "code", state, nonce, code_challenge, code_challenge_method);
+            var url = host.GetAuthorizeUrl(client_id, redirect_uri, scope, "code", state, nonce);
             var result = host.Client.GetAsync(url).Result;
             result.StatusCode.Should().Be(HttpStatusCode.Found);
 
@@ -175,17 +168,6 @@ namespace IdentityServer3.Tests.Conformance
             return response;
         }
 
-        public static HttpResponseMessage Introspect(this IdentityServerHost host, string scopeName, string scopeSecret, string token)
-        {
-            var form = new Dictionary<string, string>();
-            form.Add("token", token);
-
-            host.Client.SetBasicAuthentication(scopeName, scopeSecret);
-
-            var response = host.Client.PostAsync(host.GetIntrospectionUrl(), new FormUrlEncodedContent(form)).Result;
-            return response;
-        }
-
         public static HttpResponseMessage PostJson<T>(this IdentityServerHost host, string path, T value)
         {
             return host.Client.PostAsJsonAsync(path, value).Result;
@@ -212,16 +194,7 @@ namespace IdentityServer3.Tests.Conformance
         {
             return host.Url.EnsureTrailingSlash() + Constants.RoutePaths.Login + "?signin=" + signInId;
         }
-        public static string GetAuthorizeUrl(
-            this IdentityServerHost host,
-            string client_id = null,
-            string redirect_uri = null,
-            string scope = null,
-            string response_type = null,
-            string state = null,
-            string nonce = null,
-            string code_challenge = null,
-            string code_challenge_method = null)
+        public static string GetAuthorizeUrl(this IdentityServerHost host, string client_id = null, string redirect_uri = null, string scope = null, string response_type = null, string state = null, string nonce = null)
         {
             var disco = host.GetDiscoveryDocument();
             disco["authorization_endpoint"].Should().NotBeNull();
@@ -257,14 +230,6 @@ namespace IdentityServer3.Tests.Conformance
             {
                 query += "&nonce=" + HttpUtility.UrlEncode(nonce);
             }
-            if (code_challenge.IsPresent())
-            {
-                query += "&code_challenge=" + HttpUtility.UrlEncode(code_challenge);
-            }
-            if (code_challenge_method.IsPresent())
-            {
-                query += "&code_challenge_method=" + HttpUtility.UrlEncode(code_challenge_method);
-            }
 
             if (query.StartsWith("&"))
             {
@@ -277,12 +242,7 @@ namespace IdentityServer3.Tests.Conformance
         {
             return host.Url.EnsureTrailingSlash() + Constants.RoutePaths.Oidc.Token;
         }
-
-        public static string GetIntrospectionUrl(this IdentityServerHost host)
-        {
-            return host.Url.EnsureTrailingSlash() + Constants.RoutePaths.Oidc.Introspection;
-        }
-
+        
         public static string GetUserInfoUrl(this IdentityServerHost host)
         {
             return host.Url.EnsureTrailingSlash() + Constants.RoutePaths.Oidc.UserInfo;

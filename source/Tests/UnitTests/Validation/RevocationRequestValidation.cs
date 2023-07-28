@@ -15,19 +15,19 @@
  */
 
 using FluentAssertions;
-using IdentityServer3.Core;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.Services.InMemory;
-using IdentityServer3.Core.Validation;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using Thinktecture.IdentityServer.Core;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.Services.InMemory;
+using Thinktecture.IdentityServer.Core.Validation;
 using Xunit;
 
-namespace IdentityServer3.Tests.Validation
+namespace Thinktecture.IdentityServer.Tests.Validation
 {
     public class RevocationRequestValidation
     {
-        const string Category = "Revocation Request Validation Tests";
+        const string Category = "Revocation Request Validationn Tests";
 
         TokenRevocationRequestValidator _validator;
         IRefreshTokenStore _refreshTokens;
@@ -40,7 +40,7 @@ namespace IdentityServer3.Tests.Validation
             _tokenHandles = new InMemoryTokenHandleStore();
             _clients = new InMemoryClientStore(TestClients.Get());
 
-            _validator = new TokenRevocationRequestValidator();
+            _validator = new TokenRevocationRequestValidator(_tokenHandles, _refreshTokens);
         }
 
         [Fact]

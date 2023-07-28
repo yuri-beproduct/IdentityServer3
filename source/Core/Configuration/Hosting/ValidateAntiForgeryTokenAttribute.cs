@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Results;
-using IdentityServer3.Core.Services;
-using IdentityServer3.Core.ViewModels;
 using Microsoft.Owin;
 using System;
 using System.IO;
@@ -26,8 +21,13 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.Controllers;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Results;
+using Thinktecture.IdentityServer.Core.Services;
+using Thinktecture.IdentityServer.Core.ViewModels;
 
-namespace IdentityServer3.Core.Configuration.Hosting
+namespace Thinktecture.IdentityServer.Core.Configuration.Hosting
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple=false)]
     internal class ValidateAntiForgeryTokenAttribute : PreventUnsupportedRequestMediaTypesAttribute
@@ -59,15 +59,15 @@ namespace IdentityServer3.Core.Configuration.Hosting
             if (success)
             {
                 // ReadAsByteArrayAsync buffers the request body stream
-                // so Web API will re-use that later for model binding
-                // unfortunately the stream pointer is at the end, but 
-                // in our anti-forgery logic we use our internal ReadRequestFormAsync
-                // API to read the body, which has the side effect of resetting
-                // the stream pointer to the begining. subsequet calls to 
-                // read the form body will then succeed (e.g. via OwinContext)
-                // this is all rather unfortunate that web api prevents others
-                // from re-reading the form, but this sequence of code allow it. #lame
+                // we then put the buffered copy into the owin context
+                // so we can read it in the IsTokenValid API without 
+                // disturbing the actual stream in the HttpRequestMessage
+                // that WebAPI uses it later for model binding. #lame
                 var bytes = await actionContext.Request.Content.ReadAsByteArrayAsync();
+                var ms = new MemoryStream(bytes);
+                ms.Seek(0, SeekOrigin.Begin);
+                var ctx = new OwinContext(env);
+                ctx.Request.Body = ms;
 
                 var antiForgeryToken = env.ResolveDependency<AntiForgeryToken>();
                 success = await antiForgeryToken.IsTokenValid();

@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-using IdentityModel;
-using IdentityServer3.Core.Configuration;
-using IdentityServer3.Core.Configuration.Hosting;
-using IdentityServer3.Core.Extensions;
-using IdentityServer3.Core.Logging;
-using IdentityServer3.Core.Models;
-using IdentityServer3.Core.Services;
 using System;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Thinktecture.IdentityModel;
+using Thinktecture.IdentityServer.Core.Configuration;
+using Thinktecture.IdentityServer.Core.Configuration.Hosting;
+using Thinktecture.IdentityServer.Core.Extensions;
+using Thinktecture.IdentityServer.Core.Logging;
+using Thinktecture.IdentityServer.Core.Models;
+using Thinktecture.IdentityServer.Core.Services;
 
-namespace IdentityServer3.Core.Validation
+namespace Thinktecture.IdentityServer.Core.Validation
 {
     internal class AuthorizeRequestValidator
     {
@@ -39,9 +39,6 @@ namespace IdentityServer3.Core.Validation
         private readonly IRedirectUriValidator _uriValidator;
         private readonly ScopeValidator _scopeValidator;
         private readonly SessionCookie _sessionCookie;
-
-        private readonly ResponseTypeEqualityComparer
-            _responseTypeEqualityComparer = new ResponseTypeEqualityComparer();
 
         public AuthorizeRequestValidator(IdentityServerOptions options, IClientStore clients, ICustomRequestValidator customValidator, IRedirectUriValidator uriValidator, ScopeValidator scopeValidator, SessionCookie sessionCookie)
         {
@@ -104,15 +101,8 @@ namespace IdentityServer3.Core.Validation
 
             if (customResult.IsError)
             {
-                var message = "Custom token request validator error";
-
-                if (customResult.Error.IsPresent())
-                {
-                    message += ": " + customResult.Error;
-                }
-
-                LogError(message, request);
-                return Invalid(request, customResult.ErrorType, customResult.Error ?? message);
+                LogError("Error in custom validation: " + customResult.Error, request);
+                return Invalid(request, customResult.ErrorType, customResult.Error);
             }
 
             LogSuccess(request);
@@ -125,7 +115,7 @@ namespace IdentityServer3.Core.Validation
             // client_id must be present
             /////////////////////////////////////////////////////////
             var clientId = request.Raw.Get(Constants.AuthorizeRequest.ClientId);
-            if (clientId.IsMissingOrTooLong(_options.InputLengthRestrictions.ClientId))
+            if (clientId.IsMissingOrTooLong(Constants.MaxClientIdLength))
             {
                 LogError("client_id is missing or too long", request);
                 return Invalid(request);
@@ -139,7 +129,7 @@ namespace IdentityServer3.Core.Validation
             //////////////////////////////////////////////////////////
             var redirectUri = request.Raw.Get(Constants.AuthorizeRequest.RedirectUri);
 
-            if (redirectUri.IsMissingOrTooLong(_options.InputLengthRestrictions.RedirectUri))
+            if (redirectUri.IsMissingOrTooLong(Constants.MaxRedirectUriLength))
             {
                 LogError("redirect_uri is missing or too long", request);
                 return Invalid(request);
@@ -200,48 +190,19 @@ namespace IdentityServer3.Core.Validation
                 return Invalid(request, ErrorTypes.User, Constants.AuthorizeErrors.UnsupportedResponseType);
             }
 
-            // The responseType may come in in an unconventional order.  
-            // Use an IEqualityComparer that doesn't care about the order of multiple values.
-            // Per https://tools.ietf.org/html/rfc6749#section-3.1.1 - 
-            // 'Extension response types MAY contain a space-delimited (%x20) list of
-            // values, where the order of values does not matter (e.g., response
-            // type "a b" is the same as "b a").'
-            // http://openid.net/specs/oauth-v2-multiple-response-types-1_0-03.html#terminology - 
-            // 'If a response type contains one of more space characters (%20), it is compared 
-            // as a space-delimited list of values in which the order of values does not matter.'
-            if (!Constants.SupportedResponseTypes.Contains(responseType, _responseTypeEqualityComparer))
+            if (!Constants.SupportedResponseTypes.Contains(responseType))
             {
                 LogError("Response type not supported: " + responseType, request);
                 return Invalid(request, ErrorTypes.User, Constants.AuthorizeErrors.UnsupportedResponseType);
             }
 
-            // Even though the responseType may have come in in an unconventional order,
-            // we still need the request's ResponseType property to be set to the
-            // conventional, supported response type.
-            request.ResponseType = Constants.SupportedResponseTypes.First(
-                supportedResponseType => _responseTypeEqualityComparer.Equals(supportedResponseType, responseType));
+            request.ResponseType = responseType;
 
-            if (RequestMatchesProofKeyFlow(request))
-            {
-                /////////////////////////////////////////////////////////////////////////////
-                // if client uses authorization code with proof key flow, we need to validate
-                // code_challenge and code_challenge_method
-                /////////////////////////////////////////////////////////////////////////////
-                var proofKeyResult = ValidateProofKeyParameters(request);
-                if (proofKeyResult.IsError)
-                {
-                    return proofKeyResult;
-                }
 
-                request.Flow = request.Client.Flow;
-            }
-            else
-            {
-                //////////////////////////////////////////////////////////
-                // match response_type to flow
-                //////////////////////////////////////////////////////////
-                request.Flow = Constants.ResponseTypeToFlowMapping[request.ResponseType];
-            }
+            //////////////////////////////////////////////////////////
+            // match response_type to flow
+            //////////////////////////////////////////////////////////
+            request.Flow = Constants.ResponseTypeToFlowMapping[request.ResponseType];
 
 
             //////////////////////////////////////////////////////////
@@ -253,7 +214,6 @@ namespace IdentityServer3.Core.Validation
                 return Invalid(request);
             }
 
-            
             //////////////////////////////////////////////////////////
             // check response_mode parameter and set response_mode
             //////////////////////////////////////////////////////////
@@ -294,21 +254,6 @@ namespace IdentityServer3.Core.Validation
                 return Invalid(request, ErrorTypes.User, Constants.AuthorizeErrors.UnauthorizedClient);
             }
 
-
-            //////////////////////////////////////////////////////////
-            // check if response type contains an access token, 
-            // and if client is allowed to request access token via browser
-            //////////////////////////////////////////////////////////
-            var responseTypes = responseType.FromSpaceSeparatedString();
-            if (responseTypes.Contains(Constants.ResponseTypes.Token))
-            {
-                if (!request.Client.AllowAccessTokensViaBrowser)
-                {
-                    LogError("Client requested access token - but client is not configured to receive access tokens via browser", request);
-                    return Invalid(request);
-                }
-            }
-
             return Valid(request);
         }
 
@@ -324,7 +269,7 @@ namespace IdentityServer3.Core.Validation
                 return Invalid(request, ErrorTypes.Client);
             }
 
-            if (scope.Length > _options.InputLengthRestrictions.Scope)
+            if (scope.Length > Constants.MaxScopeLength)
             {
                 LogError("scopes too long.", request);
                 return Invalid(request, ErrorTypes.Client);
@@ -399,7 +344,7 @@ namespace IdentityServer3.Core.Validation
             var nonce = request.Raw.Get(Constants.AuthorizeRequest.Nonce);
             if (nonce.IsPresent())
             {
-                if (nonce.Length > _options.InputLengthRestrictions.Nonce)
+                if (nonce.Length > Constants.MaxNonceLength)
                 {
                     LogError("Nonce too long", request);
                     return Invalid(request, ErrorTypes.Client);
@@ -444,7 +389,7 @@ namespace IdentityServer3.Core.Validation
             var uilocales = request.Raw.Get(Constants.AuthorizeRequest.UiLocales);
             if (uilocales.IsPresent())
             {
-                if (uilocales.Length > _options.InputLengthRestrictions.UiLocale)
+                if (uilocales.Length > Constants.MaxUiLocaleLength)
                 {
                     LogError("UI locale too long", request);
                     return Invalid(request, ErrorTypes.Client);
@@ -499,7 +444,7 @@ namespace IdentityServer3.Core.Validation
             var loginHint = request.Raw.Get(Constants.AuthorizeRequest.LoginHint);
             if (loginHint.IsPresent())
             {
-                if (loginHint.Length > _options.InputLengthRestrictions.LoginHint)
+                if (loginHint.Length > Constants.MaxLoginHintLength)
                 {
                     LogError("Login hint too long", request);
                     return Invalid(request, ErrorTypes.Client);
@@ -514,7 +459,7 @@ namespace IdentityServer3.Core.Validation
             var acrValues = request.Raw.Get(Constants.AuthorizeRequest.AcrValues);
             if (acrValues.IsPresent())
             {
-                if (acrValues.Length > _options.InputLengthRestrictions.AcrValues)
+                if (acrValues.Length > Constants.MaxAcrValuesLength)
                 {
                     LogError("Acr values too long", request);
                     return Invalid(request, ErrorTypes.Client);
@@ -541,53 +486,6 @@ namespace IdentityServer3.Core.Validation
             }
 
             return Valid(request);
-        }
-
-        private AuthorizeRequestValidationResult ValidateProofKeyParameters(ValidatedAuthorizeRequest request)
-        {
-            var fail = Invalid(request, ErrorTypes.Client);
-
-            var codeChallenge = request.Raw.Get(Constants.AuthorizeRequest.CodeChallenge);
-            if (codeChallenge.IsMissing())
-            {
-                LogError("code_challenge is missing", request);
-                fail.ErrorDescription = "code challenge required";
-                return fail;
-            }
-
-            if (codeChallenge.Length < _options.InputLengthRestrictions.CodeChallengeMinLength ||
-                codeChallenge.Length > _options.InputLengthRestrictions.CodeChallengeMaxLength)
-            {
-                LogError("code_challenge is either too short or too long", request);
-                return fail;
-            }
-
-            request.CodeChallenge = codeChallenge;
-
-            var codeChallengeMethod = request.Raw.Get(Constants.AuthorizeRequest.CodeChallengeMethod);
-            if (codeChallengeMethod.IsMissing())
-            {
-                Logger.Info("Missing code_challenge_method, defaulting to plain");
-                codeChallengeMethod = Constants.CodeChallengeMethods.Plain;
-            }
-
-            if (!Constants.SupportedCodeChallengeMethods.Contains(codeChallengeMethod))
-            {
-                LogError("Unsupported code_challenge_method: " + codeChallengeMethod, request);
-                fail.ErrorDescription = "transform algorithm not supported";
-                return fail;
-            }
-
-            request.CodeChallengeMethod = codeChallengeMethod;
-
-            return Valid(request);
-        }
-
-        private bool RequestMatchesProofKeyFlow(ValidatedAuthorizeRequest request)
-        {
-            return Constants.ProofKeyFlowToResponseTypesMapping.Any(x =>
-                request.Client.Flow == x.Key &&
-                x.Value.Contains(request.ResponseType));
         }
 
         private AuthorizeRequestValidationResult Invalid(ValidatedAuthorizeRequest request, ErrorTypes errorType = ErrorTypes.User, string error = Constants.AuthorizeErrors.InvalidRequest)

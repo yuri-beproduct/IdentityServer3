@@ -14,26 +14,24 @@
  * limitations under the License.
  */
 
-using IdentityServer3.Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
+using Thinktecture.IdentityServer.Core.Extensions;
 
-namespace IdentityServer3.Core.Services.Default
+namespace Thinktecture.IdentityServer.Core.Services.Default
 {
     internal class AssetManager
     {
-        public const string HttpAssetsNamespace = "IdentityServer3.Core.Services.DefaultViewService.HttpAssets";
+        public const string HttpAssetsNamespace = "Thinktecture.IdentityServer.Core.Services.DefaultViewService.HttpAssets";
         public const string FontAssetsNamespace = HttpAssetsNamespace + ".libs.bootstrap.fonts";
 
-        public const string PageAssetsNamespace = "IdentityServer3.Core.Services.DefaultViewService.PageAssets";
+        public const string PageAssetsNamespace = "Thinktecture.IdentityServer.Core.Services.DefaultViewService.PageAssets";
         const string PagesPrefix = PageAssetsNamespace + ".";
         const string Layout = PagesPrefix + "layout.html";
         const string FormPostResponse = PagesPrefix + "FormPostResponse.html";
         const string CheckSession = PagesPrefix + "checksession.html";
-        const string SignoutFrame = PagesPrefix + "SignoutFrame.html";
         const string Welcome = PagesPrefix + "welcome.html";
 
         static readonly ResourceCache cache = new ResourceCache();
@@ -52,8 +50,6 @@ namespace IdentityServer3.Core.Services.Default
         
         public static string LoadLayoutWithContent(string content)
         {
-            if (content == null) return null;
-
             var layout = LoadResourceString(Layout);
             return ApplyContentToLayout(layout, content);
         }
@@ -85,21 +81,6 @@ namespace IdentityServer3.Core.Services.Default
             });
         }
 
-        public static string LoadSignoutFrame(IEnumerable<string> frameUrls)
-        {
-            string frames = null;
-            if (frameUrls != null && frameUrls.Any())
-            {
-                frameUrls = frameUrls.Select(x => String.Format("<iframe src='{0}'></iframe>", x));
-                frames = frameUrls.Aggregate((x, y) => x + Environment.NewLine + y);
-            }
-
-            return LoadResourceString(SignoutFrame, new
-            {
-                frames
-            });
-        }
-
         internal static string LoadWelcomePage(string applicationPath, string version)
         {
             applicationPath = applicationPath.RemoveTrailingSlash();
@@ -116,14 +97,10 @@ namespace IdentityServer3.Core.Services.Default
             if (value == null)
             {
                 var assembly = typeof(AssetManager).Assembly;
-                var s = assembly.GetManifestResourceStream(name);
-                if (s != null)
+                using (var sr = new StreamReader(assembly.GetManifestResourceStream(name)))
                 {
-                    using (var sr = new StreamReader(s))
-                    {
-                        value = sr.ReadToEnd();
-                        cache.Write(name, value);
-                    }
+                    value = sr.ReadToEnd();
+                    cache.Write(name, value);
                 }
             }
             return value;
@@ -132,16 +109,12 @@ namespace IdentityServer3.Core.Services.Default
         static string LoadResourceString(string name, object data)
         {
             string value = LoadResourceString(name);
-            if (value == null) return null;
-
             value = Format(value, data);
             return value;
         }
 
         static string Format(string value, IDictionary<string, object> data)
         {
-            if (value == null) return null;
-
             foreach (var key in data.Keys)
             {
                 var val = data[key];
